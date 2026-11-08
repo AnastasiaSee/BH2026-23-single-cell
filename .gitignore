@@ -1,0 +1,26 @@
+# Single-cell data (can be many GB)
+*.h5ad
+*.h5
+*.loom
+*.rds
+*.zarr/
+*.tsv.gz
+*.csv.gz
+data/
+**/data/
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets
+.env
+*.key
