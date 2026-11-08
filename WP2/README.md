@@ -198,6 +198,6 @@ map too large for GitHub.*
 * Steinegger M. & Söding J. MMseqs2 enables sensitive protein sequence searching for the analysis of massive data sets. *Nat Biotechnol* 2017. doi:10.1038/nbt.3988
 * Emms D.M. & Kelly S. OrthoFinder: phylogenetic orthology inference for comparative genomics. *Genome Biol* 2019. doi:10.1186/s13059-019-1832-y
 * Cao J. *et al.* A human cell atlas of fetal gene expression. *Science* 2020.
-## Contact
 
-Sabrina Jagot – WP2, Project 23, BioHackathon Europe 2026
+
+
