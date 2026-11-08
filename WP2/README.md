@@ -31,8 +31,6 @@ paths inside the code work unchanged once the root path is set.
 WP2/
 ├── README.md                     ← this file
 ├── .gitignore
-├── docs/
-│   └── Project_BioHack26_benchmark.pptx
 ├── scripts/                      ← reference & gene-map generation (see scripts/README.md)
 │   ├── 01_download_transcriptomes.sh
 │   ├── 02_build_samap_fastas.py
