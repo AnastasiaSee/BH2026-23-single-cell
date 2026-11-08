@@ -28,7 +28,7 @@ import urllib.request
 
 
 # Same ROOT as your notebook and 02_build_samap_fastas.py.
-ROOT = Path.home() / "Documents" / "BioHack26" / "samap_3species"
+ROOT = Path("path/to/WP2")
 WORK = ROOT / "refs" / "orthofinder"
 PROTEOMES = WORK / "proteomes"
 RESULTS = WORK / "results"
