@@ -11,7 +11,7 @@ import scanpy as sc
 # CONFIGURATION
 # ============================================================
 
-ROOT = Path.home() /"Documents" / "BioHack26" / "samap_3species"
+ROOT = Path("path/to/WP2")
 
 RAW = ROOT / "refs" / "raw"
 OUT = ROOT / "refs" / "samap"
