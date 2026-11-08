@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-ROOT="$HOME/PATH/to/samap_3species"
+ROOT="path/to/WP2"
 RAW="$ROOT/refs/raw"
 
 mkdir -p "$RAW"
