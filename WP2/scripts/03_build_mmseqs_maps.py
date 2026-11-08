@@ -22,7 +22,7 @@ import tempfile
 
 
 # Same project directory and FASTA files as your scripts/notebook.
-ROOT = Path.home() / "Documents" / "BioHack26" / "samap_3species"
+ROOT = Path("path/to/WP2")
 FASTAS = {
     "mm": ROOT / "refs/samap/mouse.GRCm38.GENCODEvM12.samap.fa",
     "dr": ROOT / "refs/samap/zebrafish.GRCz11.Ensembl116.samap.fa",
