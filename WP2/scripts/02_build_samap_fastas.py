@@ -26,15 +26,15 @@ MAPS.mkdir(parents=True, exist_ok=True)
 # ------------------------------------------------------------
 
 HUMAN_H5AD = Path(
-    "/PATH/to/adata_skm_lineage_20210916.h5ad"
+    "/PATH/to/raw_h5ad_folder/adata_skm_lineage_20210916.h5ad"
 )
 
 MOUSE_H5AD = Path(
-    "/PATH/to/MusMusculus_atlas_musclecells.h5ad"
+    "/PATH/to/raw_h5ad_folder/MusMusculus_atlas_musclecells.h5ad"
 )
 
 ZEBRAFISH_H5AD = Path(
-    "/PATH/to/Zebrafish_dev_atlas.h5ad"
+    "/PATH/to/raw_h5ad_folder/Zebrafish_dev_atlas.h5ad"
 )
 
 
