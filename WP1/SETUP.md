@@ -10,8 +10,9 @@ conda activate bh23
 
 # hnswlib (needed by SAMap) fails to build from pip on many machines, so take it from conda-forge
 conda install -y -c conda-forge hnswlib
+conda install -c conda-forge -c bioconda mmseqs2
+pip install anndata scanpy mudata cellxgene-census cellxgene-schema jupyterlab sc-samap==3.0.1 igraph leidenalg pandas numpy scipy holoviews bokeh
 
-pip install anndata scanpy mudata cellxgene-census cellxgene-schema samap jupyterlab
 ```
 
 Expected versions (as of 2026-11-08): `anndata` 0.11.4, `scanpy` 1.12.5, `mudata` 0.4.1, `cellxgene-census` 1.18.0, `cellxgene-schema` 7.1.2, `samap` 1.0.14, `tiledbsoma` 2.3.0.
