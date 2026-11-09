@@ -93,7 +93,7 @@ in a folder of your choice (`RAW_DIR`, see *Configuring paths*).
 * `wget`, `gzip`
 
 ```bash
-conda activate SAMapv3
+conda activate bh23
 python -m pip install "sc-samap==3.0.1"
 ```
 
