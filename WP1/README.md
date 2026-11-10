@@ -43,7 +43,7 @@ python scripts/merge_datasets.py \
 ```
 python scripts/make_term_remappings.py \
   --composite data/composite-metazoan.obo \
-  --datasets data/datasets_merged.json \
+  --datasets output/datasets_merged.json \
   --out output/term_remappings.tsv \
   --extra-obo data/collected-metazoan.obo data/cl.obo data/zfa.obo \
   --manual term_remappings_manual.tsv
@@ -81,7 +81,7 @@ Terms of BFO, NCBITaxon, COB and GO are never used. Without these restrictions, 
 ```
 python scripts/make_term_ancestors.py \
   --composite data/composite-metazoan.obo \
-  --datasets data/datasets_merged.json \
+  --datasets output/datasets_merged.json \
   --remappings output/term_remappings.tsv \
   --out output/term_ancestors.tsv
 ```

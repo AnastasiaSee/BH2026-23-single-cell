@@ -35,7 +35,7 @@ Entries of term lists holding several terms joined with ' || ' are split.
 Usage: python WP1/scripts/merge_datasets.py \\
            --input cxg=WP1/data/datasets_CxG.json --input scfair=WP1/data/datasets_scFAIR.json \\
            --input fenix=WP1/data/datasets_fenix.json \\
-           --out WP1/data/datasets_merged.json [--report merged_datasets.tsv]
+           --out WP1/output/datasets_merged.json [--report WP1/output/merged_datasets.tsv]
 """
 
 import argparse
