@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Box,
   FormControl,
@@ -13,6 +13,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import type { ExperimentRow, FacetSelection } from "../catalogQuery";
@@ -24,6 +25,56 @@ import type { ResultsView } from "./ViewToggle";
 
 const GROUP_STORAGE_KEY = "scfair-explore-group-by";
 const NONE_LABEL = "(none)";
+
+const COL = {
+  title: 220,
+  source: 88,
+  organism: 120,
+  top_organ: 120,
+  assay: 140,
+  disease: 120,
+  cell_type: 140,
+  development_stage: 120,
+  cells: 72,
+} as const;
+
+const noWrapCellSx = (maxWidth: number) => ({
+  maxWidth,
+  whiteSpace: "nowrap" as const,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  verticalAlign: "middle",
+});
+
+function TruncatedCell({
+  text,
+  maxWidth,
+  children,
+  align,
+}: {
+  text: string;
+  maxWidth: number;
+  children?: ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <TableCell align={align} sx={{ maxWidth, whiteSpace: "nowrap", verticalAlign: "middle" }}>
+      <Tooltip title={text} enterDelay={400}>
+        <Box
+          component="span"
+          sx={{
+            display: "block",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {children ?? text}
+        </Box>
+      </Tooltip>
+    </TableCell>
+  );
+}
 
 function loadStoredGroupBy(): GroupByField {
   try {
@@ -57,9 +108,22 @@ type Props = {
 
 function HitRow({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
+  const source = hit.source || "—";
+  const organism = joinValues(hit.organism);
+  const topOrgan = joinValues(hit.top_organ);
+  const assay = joinValues(hit.assay);
+  const disease = joinValues(hit.disease);
+  const cellType = joinValues(hit.cell_type);
+  const developmentStage = joinValues(hit.development_stage);
+  const cells = (hit.cell_count ?? 0).toLocaleString();
+  const titleTooltip =
+    hit.study_journal && hit.study_journal !== "unknown"
+      ? `${title} · ${hit.study_journal}`
+      : title;
+
   return (
     <TableRow hover>
-      <TableCell>
+      <TruncatedCell text={titleTooltip} maxWidth={COL.title}>
         {hit.explorer_url ? (
           <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
             {title}
@@ -67,20 +131,15 @@ function HitRow({ hit }: { hit: ExperimentHit }) {
         ) : (
           title
         )}
-        {hit.study_journal && hit.study_journal !== "unknown" ? (
-          <Typography variant="caption" color="text.secondary" display="block">
-            {hit.study_journal}
-          </Typography>
-        ) : null}
-      </TableCell>
-      <TableCell>{hit.source || "—"}</TableCell>
-      <TableCell>{joinValues(hit.organism)}</TableCell>
-      <TableCell>{joinValues(hit.top_organ)}</TableCell>
-      <TableCell>{joinValues(hit.assay)}</TableCell>
-      <TableCell>{joinValues(hit.disease)}</TableCell>
-      <TableCell>{joinValues(hit.cell_type)}</TableCell>
-      <TableCell>{joinValues(hit.development_stage)}</TableCell>
-      <TableCell align="right">{(hit.cell_count ?? 0).toLocaleString()}</TableCell>
+      </TruncatedCell>
+      <TruncatedCell text={source} maxWidth={COL.source} />
+      <TruncatedCell text={organism} maxWidth={COL.organism} />
+      <TruncatedCell text={topOrgan} maxWidth={COL.top_organ} />
+      <TruncatedCell text={assay} maxWidth={COL.assay} />
+      <TruncatedCell text={disease} maxWidth={COL.disease} />
+      <TruncatedCell text={cellType} maxWidth={COL.cell_type} />
+      <TruncatedCell text={developmentStage} maxWidth={COL.development_stage} />
+      <TruncatedCell text={cells} maxWidth={COL.cells} align="right" />
     </TableRow>
   );
 }
@@ -214,18 +273,20 @@ export function ResultsPanel({
             </Typography>
           ) : null}
           <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2 }}>
-            <Table size="small">
+            <Table size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Source</TableCell>
-                  <TableCell>Organism</TableCell>
-                  <TableCell>Top organ</TableCell>
-                  <TableCell>Assay</TableCell>
-                  <TableCell>Disease</TableCell>
-                  <TableCell>Cell type</TableCell>
-                  <TableCell>Dev. stage</TableCell>
-                  <TableCell align="right">Cells</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.title)}>Title</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.source)}>Source</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.organism)}>Organism</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.top_organ)}>Top organ</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.assay)}>Assay</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.disease)}>Disease</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.cell_type)}>Cell type</TableCell>
+                  <TableCell sx={noWrapCellSx(COL.development_stage)}>Dev. stage</TableCell>
+                  <TableCell align="right" sx={noWrapCellSx(COL.cells)}>
+                    Cells
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
