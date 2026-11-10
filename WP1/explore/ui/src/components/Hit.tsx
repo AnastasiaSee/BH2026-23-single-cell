@@ -39,18 +39,21 @@ export function formatSource(source?: string): string {
   return source || "unknown";
 }
 
-/** Compact counts for chips/table: 450, 45k, 34M. */
+/**
+ * Compact counts for chips/table.
+ * Scaled coefficient under 10 → one decimal (1.5k, 1.3M); 10+ → integer (45k, 34M).
+ */
 export function formatCompactCount(value: number): string {
   const n = Number.isFinite(value) ? value : 0;
   const abs = Math.abs(n);
-  const trim = (v: number) => {
-    const rounded = Math.round(v * 10) / 10;
-    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  const formatScaled = (scaled: number) => {
+    const rounded = Math.round(scaled * 10) / 10;
+    return Math.abs(rounded) < 10 ? rounded.toFixed(1) : String(Math.round(scaled));
   };
   if (abs < 1000) return String(Math.round(n));
-  if (abs < 1_000_000) return `${trim(n / 1000)}k`;
-  if (abs < 1_000_000_000) return `${trim(n / 1_000_000)}M`;
-  return `${trim(n / 1_000_000_000)}B`;
+  if (abs < 1_000_000) return `${formatScaled(n / 1000)}k`;
+  if (abs < 1_000_000_000) return `${formatScaled(n / 1_000_000)}M`;
+  return `${formatScaled(n / 1_000_000_000)}B`;
 }
 
 /** Attribute lists: at most 3 value chips, then a single +n chip. */
