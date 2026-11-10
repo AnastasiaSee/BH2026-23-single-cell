@@ -45,7 +45,7 @@ with cellxgene_census.open_soma() as census:
         value_filter="tissue_general == 'heart'",
         column_names=["dataset_id", "cell_type", "tissue", "development_stage"],
     )
-print(obs.head())
+    print(obs.head())
 ```
 
 ## 3. Working with H5AD files

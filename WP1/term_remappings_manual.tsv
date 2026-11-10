@@ -1,0 +1,13 @@
+factor	source_term_id	action	target_term_id	comment
+cell_type	CL:0000055	remap	CL:0011115	obsolete non-terminally differentiated cell, no replacement; its definition 'a precursor cell with a limited number of potential fates' (CL suggests progenitor cell CL:0011026, more specific)
+cell_type	CL:0008029	remap	CL:0000540	obsolete inhibitory neuron, no replacement; CL suggests GABAergic neuron with caution (not all are inhibitory), so the generic neuron
+cell_type	CL:0008030	remap	CL:0000540	obsolete excitatory neuron, no replacement; CL suggests glutamatergic neuron with caution (not all are excitatory), so the generic neuron
+development_stage	ZFS:0000024	remap	UBERON:0000111	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000025	remap	UBERON:0000111	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000026	remap	UBERON:0000111	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000027	remap	UBERON:0000111	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000028	remap	UBERON:0000111	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0007000	remap	UBERON:0007220	zebrafish hatching period (48-72 hpf): end of embryogenesis, before egg hatching; ZFS hatching is no Uberon xref
+development_stage	ZFS:0000033	remap	UBERON:0007220	zebrafish hatching:long-pec, part_of hatching period; ZFS hatching is no Uberon xref
+development_stage	ZFS:0000034	remap	UBERON:0007220	zebrafish hatching:pec-fin, part_of hatching period; ZFS hatching is no Uberon xref
+development_stage	UBERON:0000104	remap	UBERON:0000105	life cycle is a process above the stage root (life cycle stage part_of life cycle): no specific stage

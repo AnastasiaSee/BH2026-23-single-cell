@@ -1,0 +1,189 @@
+factor	source_term_id	source_label	action	target_term_id	target_label	via_term_id	via_label	method	n_datasets	organisms	comment
+cell_type	CL:0000055	obsolete non-terminally differentiated cell	remap	CL:0011115	precursor cell			manual	1	Homo sapiens	obsolete non-terminally differentiated cell, no replacement; its definition 'a precursor cell with a limited number of potential fates' (CL suggests progenitor cell CL:0011026, more specific)
+cell_type	CL:0000089	obsolete male germ line stem cell (sensu Vertebrata)	remap	CL:0000016	male germ line stem cell			obsolete_replaced_by	2	Homo sapiens	
+cell_type	CL:0000381	obsolete neurosecretory neuron	remap	CL:0000165	neuroendocrine cell			obsolete_replaced_by	1	Drosophila melanogaster	
+cell_type	CL:0000548	obsolete animal cell	remap	CL:0000000	cell			obsolete_replaced_by	3	Heterocephalus glaber;Homo sapiens;Mus musculus	
+cell_type	CL:0000938	CD16-negative, CD56-bright natural killer cell, human	remap	CL:0000824	mature natural killer cell	CL:0000824	mature natural killer cell	closest_ancestor_in_composite	80	Homo sapiens	
+cell_type	CL:0000939	CD16-positive, CD56-dim natural killer cell, human	remap	CL:0000824	mature natural killer cell	CL:0000824	mature natural killer cell	closest_ancestor_in_composite	79	Homo sapiens	
+cell_type	CL:0000965	Bm3 B cell	remap	CL:0000844	germinal center B cell	CL:0000844	germinal center B cell	closest_ancestor_in_composite	1	Mus musculus	
+cell_type	CL:0001043	activated CD4-positive, alpha-beta T cell, human	remap	CL:0000896	activated CD4-positive, alpha-beta T cell	CL:0000896	activated CD4-positive, alpha-beta T cell	closest_ancestor_in_composite	8	Homo sapiens	
+cell_type	CL:0001046	memory CCR4-positive regulatory T cell	remap	CL:0001047	CD4-positive, CD25-positive, CCR4-positive, alpha-beta regulatory T cell	CL:0001047	CD4-positive, CD25-positive, CCR4-positive, alpha-beta regulatory T cell	closest_ancestor_in_composite	17	Homo sapiens	
+cell_type	CL:0001046	memory CCR4-positive regulatory T cell	remap	CL:0002678	memory regulatory T cell	CL:0002678	memory regulatory T cell	closest_ancestor_in_composite	17	Homo sapiens	
+cell_type	CL:0001049	activated CD8-positive, alpha-beta T cell, human	remap	CL:0000906	activated CD8-positive, alpha-beta T cell	CL:0000906	activated CD8-positive, alpha-beta T cell	closest_ancestor_in_composite	4	Homo sapiens	
+cell_type	CL:0001056	dendritic cell, human	remap	CL:0000451	dendritic cell	CL:0000451	dendritic cell	closest_ancestor_in_composite	60	Homo sapiens	
+cell_type	CL:0001057	myeloid dendritic cell, human	remap	CL:0000782	myeloid dendritic cell	CL:0000782	myeloid dendritic cell	closest_ancestor_in_composite	7	Homo sapiens	
+cell_type	CL:0001058	plasmacytoid dendritic cell, human	remap	CL:0000784	plasmacytoid dendritic cell	CL:0000784	plasmacytoid dendritic cell	closest_ancestor_in_composite	34	Homo sapiens;Macaca fascicularis	
+cell_type	CL:0001062	effector memory CD8-positive, alpha-beta T cell, terminally differentiated	remap	CL:0000909	CD8-positive, alpha-beta memory T cell	CL:0000909	CD8-positive, alpha-beta memory T cell	closest_ancestor_in_composite	15	Homo sapiens	
+cell_type	CL:0001062	effector memory CD8-positive, alpha-beta T cell, terminally differentiated	remap	CL:4030002	effector memory CD45RA-positive, alpha-beta T cell, terminally differentiated	CL:4030002	effector memory CD45RA-positive, alpha-beta T cell, terminally differentiated	closest_ancestor_in_composite	15	Homo sapiens	
+cell_type	CL:0001072	CD34-negative, CD117-positive innate lymphoid cell, human	remap	CL:0001082	immature innate lymphoid cell	CL:0001082	immature innate lymphoid cell	closest_ancestor_in_composite	3	Homo sapiens	
+cell_type	CL:0001074	CD34-positive, CD56-positive, CD117-positive common innate lymphoid precursor, human	remap	CL:0001082	immature innate lymphoid cell	CL:0001082	immature innate lymphoid cell	closest_ancestor_in_composite	3	Homo sapiens	
+cell_type	CL:0001076	NKp46-positive innate lymphoid cell, human	remap	CL:0001082	immature innate lymphoid cell	CL:0001082	immature innate lymphoid cell	closest_ancestor_in_composite	2	Homo sapiens	
+cell_type	CL:0001077	ILC1, human	remap	CL:0001068	ILC1	CL:0001068	ILC1	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:0001078	group 3 innate lymphoid cell, human	remap	CL:0001071	group 3 innate lymphoid cell	CL:0001071	group 3 innate lymphoid cell	closest_ancestor_in_composite	6	Homo sapiens	
+cell_type	CL:0001079	NKp44-positive group 3 innate lymphoid cell, human	remap	CL:0001071	group 3 innate lymphoid cell	CL:0001071	group 3 innate lymphoid cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:0001080	NKp44-negative group 3 innate lymphoid cell, human	remap	CL:0001071	group 3 innate lymphoid cell	CL:0001071	group 3 innate lymphoid cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:0001081	group 2 innate lymphoid cell, human	remap	CL:0001069	group 2 innate lymphoid cell	CL:0001069	group 2 innate lymphoid cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:0001087	effector memory CD4-positive, alpha-beta T cell, terminally differentiated	remap	CL:0000897	CD4-positive, alpha-beta memory T cell	CL:0000897	CD4-positive, alpha-beta memory T cell	closest_ancestor_in_composite	4	Homo sapiens	
+cell_type	CL:0001087	effector memory CD4-positive, alpha-beta T cell, terminally differentiated	remap	CL:4030002	effector memory CD45RA-positive, alpha-beta T cell, terminally differentiated	CL:4030002	effector memory CD45RA-positive, alpha-beta T cell, terminally differentiated	closest_ancestor_in_composite	4	Homo sapiens	
+cell_type	CL:0001203	CD8-positive, alpha-beta memory T cell, CD45RO-positive	remap	CL:0000909	CD8-positive, alpha-beta memory T cell	CL:0000909	CD8-positive, alpha-beta memory T cell	closest_ancestor_in_composite	5	Homo sapiens	
+cell_type	CL:0001204	CD4-positive, alpha-beta memory T cell, CD45RO-positive	remap	CL:0000897	CD4-positive, alpha-beta memory T cell	CL:0000897	CD4-positive, alpha-beta memory T cell	closest_ancestor_in_composite	3	Homo sapiens	
+cell_type	CL:0002045	fraction A pre-pro B cell	remap	CL:0000826	pro-B cell	CL:0000826	pro-B cell	closest_ancestor_in_composite	16	Homo sapiens;Mus musculus	
+cell_type	CL:0002338	CD56-positive, CD161-positive immature natural killer cell, human	remap	CL:0000823	immature natural killer cell	CL:0000823	immature natural killer cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:0002343	decidual natural killer cell, human	remap	CL:0000349	extraembryonic cell	CL:0000349	extraembryonic cell	closest_ancestor_in_composite	8	Homo sapiens	
+cell_type	CL:0002343	decidual natural killer cell, human	remap	CL:0000824	mature natural killer cell	CL:0000824	mature natural killer cell	closest_ancestor_in_composite	8	Homo sapiens	
+cell_type	CL:0002343	decidual natural killer cell, human	remap	CL:4052028	uterine natural killer cell	CL:4052028	uterine natural killer cell	closest_ancestor_in_composite	8	Homo sapiens	
+cell_type	CL:0002371	obsolete somatic cell	remap	CL:0000000	cell			obsolete_replaced_by	13	Callithrix jacchus;Gallus gallus;Gorilla gorilla;Homo sapiens;Macaca mulatta;Monodelphis domestica;Mus musculus;Ornithorhynchus anatinus;Oryctolagus cuniculus;Pan troglodytes	
+cell_type	CL:0008029	obsolete inhibitory neuron	remap	CL:0000540	neuron			manual	34	Mus musculus	obsolete inhibitory neuron, no replacement; CL suggests GABAergic neuron with caution (not all are inhibitory), so the generic neuron
+cell_type	CL:0008030	obsolete excitatory neuron	remap	CL:0000540	neuron			manual	37	Homo sapiens;Mus musculus	obsolete excitatory neuron, no replacement; CL suggests glutamatergic neuron with caution (not all are excitatory), so the generic neuron
+cell_type	CL:0019029	centrilobular region hepatocyte	remap	CL:0019028	midzonal region hepatocyte			xref_in_composite	19	Homo sapiens;Mus musculus	
+cell_type	CL:0020002	mucosal-associated invariant T cell, human	remap	CL:0000814	mature NK T cell	CL:0000814	mature NK T cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:0020002	mucosal-associated invariant T cell, human	remap	CL:0000940	mucosal invariant T cell	CL:0000940	mucosal invariant T cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	CL:4033182	dorsal root ganglion RET neuron	remap	CL:1001451	sensory neuron of dorsal root ganglion	CL:1001451	sensory neuron of dorsal root ganglion	closest_ancestor_in_composite	1	Mus musculus	
+cell_type	CL:4052055	mature NK T cell, human	remap	CL:0000814	mature NK T cell	CL:0000814	mature NK T cell	closest_ancestor_in_composite	1	Homo sapiens	
+cell_type	FBbt:00000124	epithelial cell	remap	CL:0000066	epithelial cell			xref_in_composite	36	Drosophila melanogaster	
+cell_type	FBbt:00001690	embryonic/larval crystal cell	remap	CL:0000715	embryonic crystal cell			xref_in_composite	5	Drosophila melanogaster	
+cell_type	FBbt:00003686	Kenyon cell	remap	CL:0000673	Kenyon cell			xref_in_composite	5	Drosophila melanogaster	
+cell_type	FBbt:00004101	peptidergic neuron	remap	CL:0000110	peptidergic neuron			xref_in_composite	1	Drosophila melanogaster	
+cell_type	FBbt:00004193	cone cell	remap	CL:0000718	compound eye cone cell			xref_in_composite	4	Drosophila melanogaster	
+cell_type	FBbt:00004225	photoreceptor cell R7	remap	CL:0000707	R7 photoreceptor cell			xref_in_composite	6	Drosophila melanogaster	
+cell_type	FBbt:00004227	photoreceptor cell R8	remap	CL:0000709	R8 photoreceptor cell			xref_in_composite	6	Drosophila melanogaster	
+cell_type	FBbt:00004230	pigment cell	remap	CL:0001658	visual pigment cell (sensu Nematoda and Protostomia)			xref_in_composite	6	Drosophila melanogaster	
+cell_type	FBbt:00004904	follicle cell	remap	CL:0000477	follicle cell of egg chamber			xref_in_composite	4	Drosophila melanogaster	
+cell_type	FBbt:00004910	stalk follicle cell	remap	CL:0000674	interfollicle cell			xref_in_composite	6	Drosophila melanogaster	
+cell_type	FBbt:00004935	spermatogonium	remap	CL:0000020	spermatogonium			xref_in_composite	4	Drosophila melanogaster	
+cell_type	FBbt:00004936	spermatocyte	remap	CL:0000017	spermatocyte			xref_in_composite	6	Drosophila melanogaster	
+cell_type	FBbt:00004942	spermatid	remap	CL:0000018	spermatid			xref_in_composite	6	Drosophila melanogaster	
+cell_type	FBbt:00004995	oenocyte	remap	CL:0000487	oenocyte			xref_in_composite	14	Drosophila melanogaster	
+cell_type	FBbt:00005063	hemocyte	remap	CL:0000387	hemocyte (sensu Arthropoda)			xref_in_composite	34	Drosophila melanogaster	
+cell_type	FBbt:00005070	visceral muscle cell	remap	CL:0008007	visceral muscle cell			xref_in_composite	5	Drosophila melanogaster	
+cell_type	FBbt:00005074	muscle cell	remap	CL:0000187	muscle cell			xref_in_composite	41	Drosophila melanogaster	
+cell_type	FBbt:00005106	neuron	remap	CL:0000540	neuron			xref_in_composite	24	Drosophila melanogaster	
+cell_type	FBbt:00005124	sensory neuron	remap	CL:0000101	sensory neuron			xref_in_composite	21	Drosophila melanogaster	
+cell_type	FBbt:00005131	dopaminergic neuron	remap	CL:0000700	dopaminergic neuron			xref_in_composite	4	Drosophila melanogaster	
+cell_type	FBbt:00005144	glial cell	remap	CL:0000125	glial cell			xref_in_composite	18	Drosophila melanogaster	
+cell_type	FBbt:00005171	tormogen cell	remap	CL:0000372	tormogen cell			xref_in_composite	4	Drosophila melanogaster	
+cell_type	FBbt:00006009	eye photoreceptor cell	remap	CL:2000019	compound eye photoreceptor cell			xref_in_composite	5	Drosophila melanogaster	
+cell_type	FBbt:00057012	female germline cell	remap	CL:0000025	egg cell			xref_in_composite	3	Drosophila melanogaster	
+cell_type	ZFA:0000003	adaxial cell	remap	CL:0007016	adaxial cell			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0001725	immature Schwann cell	remap	CL:0002377	immature Schwann cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0005237	erythroblast	remap	CL:0000765	erythroblast			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0005245	xanthoblast	remap	CL:0005002	xanthoblast			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0005323	ionocyte	remap	CL:0005006	ionocyte			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0005775	enteric neuron	remap	CL:0007011	enteric neuron			xref_in_composite	8	Danio rerio	
+cell_type	ZFA:0005830	hematopoietic cell	remap	CL:0000988	hematopoietic cell			xref_in_composite	5	Danio rerio	
+cell_type	ZFA:0007089	embryonic cell	remap	CL:0002321	embryonic cell (metazoa)			xref_in_composite	18	Danio rerio	
+cell_type	ZFA:0009011	neuroblast	remap	CL:0000031	neuroblast (sensu Vertebrata)			xref_in_composite	11	Danio rerio	
+cell_type	ZFA:0009014	hematopoietic stem cell	remap	CL:0000037	hematopoietic stem cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009019	neuronal stem cell	remap	CL:0000047	neural stem cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009021	common myeloid progenitor	remap	CL:0000049	common myeloid progenitor			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009025	myoblast	remap	CL:0000056	myoblast			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0009026	fibroblast	remap	CL:0000057	fibroblast			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009034	epithelial cell	remap	CL:0000066	epithelial cell			xref_in_composite	8	Danio rerio	
+cell_type	ZFA:0009041	peridermal cell	remap	CL:0000078	peridermal cell			xref_in_composite	8	Danio rerio	
+cell_type	ZFA:0009044	blood cell	remap	CL:0000081	blood cell			xref_in_composite	4	Danio rerio	
+cell_type	ZFA:0009073	glial cell	remap	CL:0000125	glial cell			xref_in_composite	5	Danio rerio	
+cell_type	ZFA:0009076	oligodendrocyte	remap	CL:0000128	oligodendrocyte			xref_in_composite	4	Danio rerio	
+cell_type	ZFA:0009077	microglial cell	remap	CL:0000129	microglial cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009081	mesenchymal cell	remap	CL:0000134	mesenchymal stem cell			xref_in_composite	4	Danio rerio	
+cell_type	ZFA:0009084	chondrocyte	remap	CL:0000138	chondrocyte			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009090	pigment cell	remap	CL:0000147	pigment cell			xref_in_composite	4	Danio rerio	
+cell_type	ZFA:0009091	melanocyte	remap	CL:0000148	melanocyte			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009114	muscle cell	remap	CL:0000187	muscle cell			xref_in_composite	13	Danio rerio	
+cell_type	ZFA:0009115	skeletal muscle cell	remap	CL:0000188	cell of skeletal muscle			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009117	fast muscle cell	remap	CL:0000190	fast muscle cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009137	ectodermal cell	remap	CL:0000221	ectodermal cell			xref_in_composite	5	Danio rerio	
+cell_type	ZFA:0009138	mesodermal cell	remap	CL:0000222	mesodermal cell			xref_in_composite	9	Danio rerio	
+cell_type	ZFA:0009139	endodermal cell	remap	CL:0000223	endodermal cell			xref_in_composite	13	Danio rerio	
+cell_type	ZFA:0009141	macrophage	remap	CL:0000235	macrophage			xref_in_composite	5	Danio rerio	
+cell_type	ZFA:0009151	hatching gland cell	remap	CL:0000249	hatching gland cell			xref_in_composite	4	Danio rerio	
+cell_type	ZFA:0009154	eye photoreceptor cell	remap	CL:0000287	eye photoreceptor cell			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0009159	mucus secreting cell	remap	CL:0000319	mucus secreting cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009183	epidermal cell	remap	CL:0000362	epidermal cell			xref_in_composite	17	Danio rerio	
+cell_type	ZFA:0009198	xanthophore	remap	CL:0000430	xanthophore cell			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0009199	iridophore	remap	CL:0000431	iridophore			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009241	pigmented epithelial cell	remap	CL:0000529	pigmented epithelial cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009242	primary neuron	remap	CL:0000530	primary neuron (sensu Teleostei)			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009248	neuron	remap	CL:0000540	neuron			xref_in_composite	14	Danio rerio	
+cell_type	ZFA:0009255	amacrine cell	remap	CL:0000561	amacrine cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009256	nucleate erythrocyte	remap	CL:0000562	nucleate erythrocyte			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009262	retinal cone cell	remap	CL:0000573	retinal cone cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009269	enterocyte	remap	CL:0000584	enterocyte			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009275	retinal rod cell	remap	CL:0000604	retinal rod cell			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0009276	GABAergic neuron	remap	CL:0000617	GABAergic neuron			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009280	Muller cell	remap	CL:0000636	Mueller cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009288	primordial germ cell	remap	CL:0000670	primordial germ cell			xref_in_composite	11	Danio rerio	
+cell_type	ZFA:0009292	radial glial cell	remap	CL:0000681	radial glial cell			xref_in_composite	6	Danio rerio	
+cell_type	ZFA:0009310	retinal ganglion cell	remap	CL:0000740	retinal ganglion cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009316	cardiac muscle cell	remap	CL:0000746	cardiac muscle cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009322	cone retinal bipolar cell	remap	CL:0000752	cone retinal bipolar cell			xref_in_composite	3	Danio rerio	
+cell_type	ZFA:0009323	thrombocyte	remap	CL:0000762	nucleated thrombocyte			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009327	neutrophil	remap	CL:0000775	neutrophil			xref_in_composite	5	Danio rerio	
+cell_type	ZFA:0009350	pro-T cell	remap	CL:0000827	pro-T cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009354	hematopoietic multipotent progenitor cell	remap	CL:0000837	hematopoietic multipotent progenitor cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009355	lymphoid progenitor cell	remap	CL:0000838	lymphoid lineage restricted progenitor cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009389	kidney cell	remap	CL:1000497	kidney cell			xref_in_composite	2	Danio rerio	
+cell_type	ZFA:0009397	cholangiocyte	remap	CL:1000488	cholangiocyte			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009399	intestinal epithelial cell	remap	CL:0002563	intestinal epithelial cell			xref_in_composite	1	Danio rerio	
+cell_type	ZFA:0009401	lens fiber cell	remap	CL:0011004	lens fiber cell			xref_in_composite	5	Danio rerio	
+cell_type	na	na	remap	CL:0000000	cell			unknown_to_ontology_root	7	Homo sapiens;Mus musculus	
+cell_type	unknown	unknown	remap	CL:0000000	cell			unknown_to_ontology_root	687	Callithrix jacchus;Danio rerio;Homo sapiens;Microcebus murinus;Mus musculus	
+development_stage	HsapDv:0000003	Carnegie stage 01	remap	UBERON:0000106	zygote stage			xref_in_composite	1	Homo sapiens	
+development_stage	HsapDv:0000006	blastula stage	remap	UBERON:0000108	blastula stage			xref_in_composite	2	Homo sapiens	
+development_stage	HsapDv:0000015	organogenesis stage	remap	UBERON:0000111	organogenesis stage			xref_in_composite	6	Homo sapiens	
+development_stage	HsapDv:0000037	fetal stage	remap	UBERON:0007220	late embryonic stage			xref_in_composite	2	Homo sapiens	
+development_stage	HsapDv:0000045	prenatal stage	remap	UBERON:0000068	embryo stage			xref_in_composite	1	Homo sapiens	
+development_stage	HsapDv:0000226	prime adult stage	remap	UBERON:0018241	prime adult stage			xref_in_composite	85	Homo sapiens	
+development_stage	HsapDv:0000227	late adult stage	remap	UBERON:0007222	late adult stage			xref_in_composite	38	Homo sapiens	
+development_stage	HsapDv:0000258	adult stage	remap	UBERON:0000113	post-juvenile adult stage			xref_in_composite	185	Homo sapiens	
+development_stage	HsapDv:0000260	nursing stage (0-11 months)	remap	UBERON:0018685	nursing stage			xref_in_composite	5	Homo sapiens	
+development_stage	HsapDv:0000261	infant stage	remap	UBERON:0034920	infant stage			xref_in_composite	3	Homo sapiens	
+development_stage	HsapDv:0000262	newborn stage (0-28 days)	remap	UBERON:0007221	neonate stage			xref_in_composite	56	Homo sapiens	
+development_stage	HsapDv:0000264	pediatric stage	remap	UBERON:0000112	sexually immature stage			xref_in_composite	32	Homo sapiens	
+development_stage	HsapDv:0000271	juvenile stage (5-14 yo)	remap	UBERON:0034919	juvenile stage			xref_in_composite	17	Homo sapiens	
+development_stage	HsapDv:0010000	postnatal stage	remap	UBERON:0000066	fully formed stage			xref_in_composite	18	Homo sapiens	
+development_stage	MmusDv:0000036	Theiler stage 27	remap	UBERON:0007221	neonate stage			xref_in_composite	45	Mus musculus	
+development_stage	MmusDv:0000043	immature stage	remap	UBERON:0000112	sexually immature stage			xref_in_composite	3	Mus musculus	
+development_stage	MmusDv:0000092	postnatal stage	remap	UBERON:0000066	fully formed stage			xref_in_composite	3	Mus musculus	
+development_stage	MmusDv:0000110	mature stage	remap	UBERON:0000113	post-juvenile adult stage			xref_in_composite	10	Mus musculus	
+development_stage	MmusDv:0000136	prime adult stage	remap	UBERON:0018241	prime adult stage			xref_in_composite	42	Mus musculus	
+development_stage	MmusDv:0000177	infant stage	remap	UBERON:0034920	infant stage			xref_in_composite	2	Mus musculus	
+development_stage	MmusDv:0000178	juvenile stage	remap	UBERON:0034919	juvenile stage			xref_in_composite	2	Mus musculus	
+development_stage	UBERON:0000104	life cycle	remap	UBERON:0000105	life cycle stage			manual	3	Homo sapiens	life cycle is a process above the stage root (life cycle stage part_of life cycle): no specific stage
+development_stage	ZFS:0000024	segmentation:5-9 somites	remap	UBERON:0000111	organogenesis stage			manual	9	Danio rerio	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000025	segmentation:10-13 somites	remap	UBERON:0000111	organogenesis stage			manual	10	Danio rerio	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000026	segmentation:14-19 somites	remap	UBERON:0000111	organogenesis stage			manual	43	Danio rerio	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000027	segmentation:20-25 somites	remap	UBERON:0000111	organogenesis stage			manual	42	Danio rerio	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000028	segmentation:26+ somites	remap	UBERON:0000111	organogenesis stage			manual	42	Danio rerio	zebrafish segmentation period (10-24 hpf), before pharyngula, which is part_of organogenesis stage; ZFS segmentation is no Uberon xref
+development_stage	ZFS:0000029	pharyngula:prim-5	remap	UBERON:0004707	pharyngula stage	ZFS:0000050	pharyngula	closest_ancestor_in_composite	32	Danio rerio	
+development_stage	ZFS:0000030	pharyngula:prim-15	remap	UBERON:0004707	pharyngula stage	ZFS:0000050	pharyngula	closest_ancestor_in_composite	32	Danio rerio	
+development_stage	ZFS:0000031	pharyngula:prim-25	remap	UBERON:0004707	pharyngula stage	ZFS:0000050	pharyngula	closest_ancestor_in_composite	32	Danio rerio	
+development_stage	ZFS:0000032	pharyngula:high-pec	remap	UBERON:0004707	pharyngula stage	ZFS:0000050	pharyngula	closest_ancestor_in_composite	32	Danio rerio	
+development_stage	ZFS:0000033	hatching:long-pec	remap	UBERON:0007220	late embryonic stage			manual	32	Danio rerio	zebrafish hatching:long-pec, part_of hatching period; ZFS hatching is no Uberon xref
+development_stage	ZFS:0000034	hatching:pec-fin	remap	UBERON:0007220	late embryonic stage			manual	32	Danio rerio	zebrafish hatching:pec-fin, part_of hatching period; ZFS hatching is no Uberon xref
+development_stage	ZFS:0000035	larval:protruding-mouth	remap	UBERON:0000069	larval stage	ZFS:0000048	larva	closest_ancestor_in_composite	32	Danio rerio	
+development_stage	ZFS:0000037	larval:day 5	remap	UBERON:0000069	larval stage	ZFS:0000048	larva	closest_ancestor_in_composite	8	Danio rerio	
+development_stage	ZFS:0000039	larval:days 7-13	remap	UBERON:0000069	larval stage	ZFS:0000048	larva	closest_ancestor_in_composite	8	Danio rerio	
+development_stage	ZFS:0000047	gastrula	remap	UBERON:0000109	gastrula stage			xref_in_composite	7	Danio rerio	
+development_stage	ZFS:0000050	pharyngula	remap	UBERON:0004707	pharyngula stage			xref_in_composite	8	Danio rerio	
+development_stage	ZFS:0007000	hatching	remap	UBERON:0007220	late embryonic stage			manual	8	Danio rerio	zebrafish hatching period (48-72 hpf): end of embryogenesis, before egg hatching; ZFS hatching is no Uberon xref
+development_stage	na	na	remap	UBERON:0000105	life cycle stage			unknown_to_ontology_root	198	Callithrix jacchus;Gorilla gorilla;Homo sapiens;Macaca fascicularis;Macaca mulatta;Mus musculus;Mus musculus musculus;Oryctolagus cuniculus;Rattus norvegicus;Sus scrofa;Tupaia belangeri	
+development_stage	unknown	unknown	remap	UBERON:0000105	life cycle stage			unknown_to_ontology_root	106	Danio rerio;Homo sapiens;Mus musculus	
+tissue	CVCL_0004	K-562	exclude					cell_line_excluded	1	Homo sapiens	
+tissue	CVCL_0023	A-549	exclude					cell_line_excluded	1	Homo sapiens	
+tissue	CVCL_0031	MCF-7	exclude					cell_line_excluded	1	Homo sapiens	
+tissue	CVCL_0060	NCI-H1299	exclude					cell_line_excluded	1	Homo sapiens	
+tissue	CVCL_0609	Calu-3	exclude					cell_line_excluded	1	Homo sapiens	
+tissue	FBbt:00000004	head	remap	UBERON:6000004	panarthropod head			xref_in_composite	4	Drosophila melanogaster	
+tissue	FBbt:00004511	antenna	remap	UBERON:0000972	antenna			xref_in_composite	4	Drosophila melanogaster	
+tissue	FBbt:00004535	proboscis	remap	UBERON:6004535	insect proboscis			xref_in_composite	2	Drosophila melanogaster	
+tissue	FBbt:00004640	leg	remap	UBERON:0005895	insect leg			xref_in_composite	5	Drosophila melanogaster	
+tissue	FBbt:00004729	wing	remap	UBERON:0000984	imaginal disc-derived wing			xref_in_composite	4	Drosophila melanogaster	
+tissue	FBbt:00004783	haltere	remap	UBERON:0000987	haltere			xref_in_composite	5	Drosophila melanogaster	
+tissue	FBbt:00004865	ovary	remap	UBERON:0000992	ovary			xref_in_composite	4	Drosophila melanogaster	
+tissue	FBbt:00004928	testis	remap	UBERON:0000473	testis			xref_in_composite	4	Drosophila melanogaster	
+tissue	FBbt:00004995	oenocyte	remap	CL:0000487	oenocyte			xref_in_composite	4	Drosophila melanogaster	
+tissue	FBbt:00005066	fat body	remap	UBERON:0003917	arthropod fat body			xref_in_composite	5	Drosophila melanogaster	
+tissue	FBbt:00005786	Malpighian tubule	remap	UBERON:0001054	Malpighian tubule			xref_in_composite	5	Drosophila melanogaster	
+tissue	UBERON:8440010	Brodmann (1909) area 17	remap	UBERON:0002436	primary visual cortex	UBERON:0002436	primary visual cortex	closest_ancestor_in_composite	4	Homo sapiens	
+tissue	UBERON:8440010	Brodmann (1909) area 17	remap	UBERON:0013529	Brodmann area	UBERON:0013529	Brodmann area	closest_ancestor_in_composite	4	Homo sapiens	
+tissue	na	na	remap	UBERON:0001062	anatomical entity			unknown_to_ontology_root	191	Callithrix jacchus;Drosophila melanogaster;Homo sapiens;Macaca fascicularis;Macaca mulatta;Mus musculus;Mus musculus musculus;Oryctolagus cuniculus;Rattus norvegicus;Tupaia belangeri	
