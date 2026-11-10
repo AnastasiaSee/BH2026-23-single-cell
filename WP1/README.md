@@ -1,6 +1,6 @@
 # WP1: Biodata resource integration
 
-Pipeline to build the dataset metadata used for the species x factor table. All commands are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored).
+Pipeline to build the dataset metadata used for the species x factor table. All commands are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored); generated files to share, such as the term remapping TSV, go in `output/`.
 
 ## 1. Download the ontologies
 
@@ -44,7 +44,7 @@ python scripts/merge_datasets.py \
 python scripts/make_term_remappings.py \
   --composite data/composite-metazoan.obo \
   --datasets data/datasets_merged.json \
-  --out term_remappings.tsv \
+  --out output/term_remappings.tsv \
   --extra-obo data/collected-metazoan.obo data/cl.obo data/zfa.obo \
   --manual term_remappings_manual.tsv
 ```
