@@ -1,6 +1,6 @@
-# Experiment explore stack (Parquet + DuckDB-WASM)
+# Experiment explore stack (Parquet + hyparquet)
 
-**Client-side Parquet + DuckDB-WASM** — no search server, no API keys.
+**Client-side Parquet** — no search server, no API keys, no multi‑MB WASM engine.
 
 Catalogs:
 
@@ -10,7 +10,9 @@ Catalogs:
 | Piece | Role |
 |-------|------|
 | **Python exporter** | Flattens catalogs (+ OLS tissue/cell-type hierarchy) → `ui/public/experiments.parquet` |
-| **React + Vite + DuckDB-WASM** | Search, facets, Cards/Table/Pivot in the browser |
+| **React + Vite + hyparquet** | Loads Parquet in the browser (~0.5 MiB data + ~0.5 MiB JS); search/facets/pivot in memory |
+
+> Why not DuckDB-WASM? Its `.wasm` is ~34 MiB and dominated cold start (~30s). For a few hundred catalog rows, hyparquet + JS filters is enough.
 
 ## Prerequisites
 
@@ -37,58 +39,37 @@ npm run dev
 
 ## Updating the Parquet file with more JSON
 
-Whenever catalogs change (new rows, new source files, refreshed downloads):
-
-1. **Put the JSON on disk** (Fenix snapshot and/or a partner file).
-2. **Re-export:**
-
 ```bash
 cd WP1/explore
 source .venv/bin/activate
 
-# Fenix only (default)
 python indexer/export_parquet.py
-
-# Add one or more partner catalogs (new-source ingest schema):
 python indexer/export_parquet.py \
   --json example_partner=/path/to/partner-datasets.json
 ```
 
-3. **Reload the UI** (hard-refresh so Vite re-fetches `/experiments.parquet`).
+Hard-refresh the UI so `/experiments.parquet` reloads.
 
-Partner JSON shape: `{ "datasets": [ … ] }` (or `{ "data": [ … ] }` / bare array). Each dataset should match the partner ingest schema (`id`, `title`, Term objects for `tissue` / `cell_type` / …).
-
-Ids are namespaced as `{source}::{id}`. The faceted `source` field is `fenix` or the `SOURCE` from `--json SOURCE=PATH`.
+Partner JSON: `{ "datasets": [ … ] }` (or `{ "data": [ … ] }` / bare array) matching the partner ingest schema.
 
 ### OLS hierarchy refresh
 
 ```bash
 python indexer/export_parquet.py --refresh-ols
-# or warm caches first:
 python indexer/enrich_tissue_hierarchy.py
 python indexer/enrich_cell_type_hierarchy.py
 python indexer/export_parquet.py
 ```
-
-Caches live under `indexer/ols_cache/`.
-
-## UI features
-
-- Full-text filter over `title` / `search_blob` / `experiment_id`
-- Facet checklists (list columns via DuckDB `list_has_any` / `UNNEST`)
-- Cards / Table (group-by) / Pivot heatmap
-- Client-side pagination
 
 ## Layout
 
 ```
 WP1/explore/
   indexer/
-    catalog.py                  # flatten helpers (Fenix / partner)
-    export_parquet.py           # JSON catalogs → Parquet
-    ols_*.py / ols_cache/       # OLS hierarchy enrichment
+    catalog.py / export_parquet.py
+    ols_*.py / ols_cache/
   ui/
-    public/experiments.parquet  # static artifact served by Vite
-    src/duckdb.ts               # DuckDB-WASM loader + SQL helpers
+    public/experiments.parquet
+    src/catalogQuery.ts          # hyparquet load + in-memory query
     src/App.tsx
 ```

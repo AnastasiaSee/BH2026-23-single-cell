@@ -64,7 +64,7 @@ Identifiers / links: `experiment_id`, `study_id`, `explorer_url`, `assets[].url`
 
 ## Implemented explore stack
 
-**Parquet + DuckDB-WASM (client-side)** explore lives in [`../explore/`](../explore/). See that README for `export_parquet.py` → `npm run dev` (and how to add more JSON sources).
+**Parquet + hyparquet (client-side)** explore lives in [`../explore/`](../explore/). See that README for `export_parquet.py` → `npm run dev` (and how to add more JSON sources).
 
 ## Proposed search UI stacks (context / alternatives)
 

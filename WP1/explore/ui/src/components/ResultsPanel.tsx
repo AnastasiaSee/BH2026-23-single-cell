@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ExperimentRow, FacetSelection } from "../duckdb";
+import type { ExperimentRow, FacetSelection } from "../catalogQuery";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
 import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";

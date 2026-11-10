@@ -8,7 +8,7 @@ import {
   type ExperimentRow,
   type FacetField,
   type FacetSelection,
-} from "./duckdb";
+} from "./catalogQuery";
 
 const PAGE_SIZE = 24;
 
@@ -182,7 +182,7 @@ export default function App() {
         <header className="hero">
           <p className="eyebrow">WP1 explore</p>
           <h1>Single-cell catalogs</h1>
-          <p className="lede">Loading Parquet into DuckDB-WASM…</p>
+          <p className="lede">Loading catalog Parquet…</p>
         </header>
       </div>
     );
@@ -194,9 +194,9 @@ export default function App() {
         <p className="eyebrow">WP1 explore</p>
         <h1>Single-cell catalogs</h1>
         <p className="lede">
-          Fully client-side explore over catalog Parquet — queried in the browser
-          with DuckDB-WASM. Re-run{" "}
-          <code>export_parquet.py</code> when JSON sources change.
+          Fully client-side explore over catalog Parquet (hyparquet + in-memory
+          filters — no large WASM engine). Re-run <code>export_parquet.py</code>{" "}
+          when JSON sources change.
         </p>
       </header>
 

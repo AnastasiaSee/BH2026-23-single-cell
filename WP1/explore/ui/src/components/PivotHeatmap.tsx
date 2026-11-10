@@ -4,7 +4,7 @@ import {
   type FacetField,
   type FacetSelection,
   type PivotResult,
-} from "../duckdb";
+} from "../catalogQuery";
 
 export const PIVOT_FIELDS: { value: FacetField; label: string }[] = [
   { value: "source", label: "Source" },

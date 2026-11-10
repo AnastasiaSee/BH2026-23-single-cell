@@ -4,7 +4,7 @@ import {
   type FacetCount,
   type FacetField,
   type FacetSelection,
-} from "../duckdb";
+} from "../catalogQuery";
 
 type Props = {
   field: FacetField;

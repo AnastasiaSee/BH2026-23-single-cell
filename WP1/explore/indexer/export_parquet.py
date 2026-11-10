@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export flattened experiment catalogs to Parquet for DuckDB-WASM.
+"""Export flattened experiment catalogs to Parquet for the browser UI.
 
 Built-in source:
   - Fenix (`--fenix-json`)

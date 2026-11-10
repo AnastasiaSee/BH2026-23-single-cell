@@ -6,7 +6,7 @@ CELLxGENE / Fenix experiment metadata snapshot, download script, facet summary, 
 
 → [`fenix/`](fenix/)
 
-## Explore stack (Parquet + DuckDB-WASM)
+## Explore stack (Parquet + hyparquet)
 
 Client-side faceted explore over Fenix (`source` facet), with optional partner JSON via `--json SOURCE=PATH`:
 

@@ -7,10 +7,4 @@ export default defineConfig({
     port: 5173,
     host: "0.0.0.0",
   },
-  optimizeDeps: {
-    exclude: ["@duckdb/duckdb-wasm"],
-  },
-  worker: {
-    format: "es",
-  },
 });
