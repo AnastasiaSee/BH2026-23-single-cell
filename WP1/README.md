@@ -28,12 +28,12 @@ python scripts/merge_datasets.py \
   --report data/merged_datasets.tsv
 ```
 
-- `--input FORMAT=PATH` is repeated once per source. `FORMAT` selects how the file is read: `cxg` (CELLxGENE curation API export), `scfair` (scFAIR portal export) or `fenix` (CELLxGENE Discover search export). To add a source, write a reader function in the script and register it in `READERS`.
+- `--input FORMAT=PATH` is repeated once per source. `FORMAT` selects how the file is read: `cxg` (CELLxGENE curation API export), `scfair` (scFAIR portal export) or `fenix` (Single Cell Expression Atlas export). To add a source, write a reader function in the script and register it in `READERS`.
 - **The order of the `--input` options is the priority**: the first source is preferred for scalar fields. Put the freshest source first.
 - Deduplication:
   - the same dataset of the same source (same source and `source_reference_id`) is always merged;
   - datasets of different resources with the same DOI, the same organisms and the same cell count are merged too (only if unambiguous), and flagged with `"merged": true`. `--report` lists these merges.
-- Merged records keep the most complete information: lists (tissue, cell type, ...) are the union of the sources. A record of an older version of a dataset (different `dataset_version_id`) only fills empty fields.
+- Merged records keep the most complete information: lists (tissue, cell type, ...) are the union of the sources. A record of an older version of a dataset (different `dataset_version_id`) only fills empty fields. scFAIR copies of CELLxGENE datasets have no version id: it is read from the name of their H5AD file (`<dataset_version_id>.h5ad`).
 - Each output record has a `dataset_id` (`<source>:<source id>`) and a `sources` list with the provenance of every merged record.
 
 ## 3. Generate the term remapping file

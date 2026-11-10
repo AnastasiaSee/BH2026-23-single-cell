@@ -19,10 +19,13 @@ Deduplication
      once in the group); otherwise the records are left separate and counted in the summary.
 
 Merging keeps the most complete information: list fields are the union of the records' values
-(deduplicated by ontology_term_id, assets by URL); other fields are taken from the
-highest-priority record that has a value. A record of an outdated version of the dataset (its
-`dataset_version_id` differs from that of the highest-priority record having one) only fills
-fields that are empty in the current records: put the freshest source first. Output records have
+(deduplicated by ontology_term_id, or label when there is no term id, assets by URL; tissues of
+the same term with different tissue_type, e.g. tissue and organoid, are kept apart); other
+fields are taken from the highest-priority record that has a value. A record of an outdated
+version of the dataset (its `dataset_version_id` differs from that of the highest-priority
+record having one) only fills fields that are empty in the current records: put the freshest
+source first. scFAIR copies of CELLxGENE datasets get their `dataset_version_id` from the name
+of their H5AD file. Missing term fields become empty lists. Output records have
   dataset_id  "<slug>:<source_reference_id>" of the primary (highest-priority) record
   sources     one entry per merged record (source, source_reference_id, source_url,
               explorer_url, input_format, input_dataset_id)
@@ -64,6 +67,8 @@ def normalise(rec):
     for f in TERM_FIELDS:
         if isinstance(rec.get(f), list):
             rec[f] = split_joined_terms([e for e in rec[f] if isinstance(e, dict)])
+        elif rec.get(f) is None:
+            rec[f] = []  # missing field (e.g. self_reported_ethnicity outside CELLxGENE)
     return rec
 
 
@@ -79,9 +84,25 @@ def read_cxg(data):
     return out
 
 
+# CELLxGENE H5AD files are named after the dataset version id
+CXG_H5AD_URL = re.compile(r"^https://datasets\.cellxgene\.cziscience\.com/([0-9a-f-]{36})\.h5ad$")
+
+
 def read_scfair(data):
-    """scFAIR portal export: a list of records that already have source and source_reference_id."""
-    return [(rec["dataset_id"], dict(rec)) for rec in data]
+    """scFAIR portal export: a list of records that already have source and source_reference_id.
+
+    scFAIR copies of CELLxGENE datasets have no dataset_version_id; it is read from the name of
+    their H5AD file, so that copies of an older version are recognised as outdated."""
+    out = []
+    for rec in data:
+        rec = dict(rec)
+        if rec["source"]["slug"] == "cxg" and not rec.get("dataset_version_id"):
+            versions = {m.group(1) for a in rec.get("assets") or []
+                        if (m := CXG_H5AD_URL.match(a.get("url") or ""))}
+            if len(versions) == 1:
+                rec["dataset_version_id"] = versions.pop()
+        out.append((rec["dataset_id"], rec))
+    return out
 
 
 # Fields of the common format that the 'fenix' records carry under the same name
@@ -134,10 +155,32 @@ def is_empty(v):
 
 def item_key(item):
     if isinstance(item, dict) and "ontology_term_id" in item:
-        return item["ontology_term_id"]
+        # some entries have no term id (e.g. Bgee assays): fall back to the label
+        return item["ontology_term_id"] or f"label:{item.get('label')}"
     if isinstance(item, dict) and "url" in item:
         return item["url"]
     return json.dumps(item, sort_keys=True)
+
+
+def union_items(lists):
+    """Union of list values, deduplicated by item_key, in priority order. CELLxGENE tissue
+    entries of the same term with different tissue_type (e.g. 'tissue' and 'organoid') are kept
+    apart; an entry without tissue_type (scFAIR) is a duplicate of any entry of the same term."""
+    out, positions = [], collections.defaultdict(list)  # key -> indexes in out
+    for v in lists:
+        for item in v:
+            k = item_key(item)
+            tt = item.get("tissue_type") if isinstance(item, dict) else None
+            types = {out[i].get("tissue_type") if isinstance(out[i], dict) else None
+                     for i in positions[k]}
+            if positions[k] and (tt is None or tt in types):
+                continue
+            if types == {None}:  # replace the untyped entry by the typed one
+                out[positions[k][0]] = item
+                continue
+            positions[k].append(len(out))
+            out.append(item)
+    return out
 
 
 def merge_records(records):
@@ -166,14 +209,7 @@ def merge_records(records):
         if not values:
             out[f] = records[0][3].get(f)
         elif isinstance(values[0], list):
-            merged, seen = [], set()
-            for v in values:
-                for item in v:
-                    k = item_key(item)
-                    if k not in seen:
-                        seen.add(k)
-                        merged.append(item)
-            out[f] = merged
+            out[f] = union_items(values)
         else:
             out[f] = values[0]
     slugs = {r[3]["source"]["slug"] for r in records}
