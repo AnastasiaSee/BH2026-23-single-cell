@@ -14,10 +14,25 @@ Our strategy was to choose two types of methods that use different data inputs a
 The first method is ElasticNet regression which takes an expression matrix and weighs the ability of each gene to classify a cell in a category of interest (e.g., species). We provide expression matrices for SAMap-defined homologous groups and it outputs coefficients for each gene as well as a classification accuracy value. Gene weights allow us to detect genes that drive species-specific signals while we can compare the classification accuracy score to determine the overall strength of the species-specific signal.
 
 Interpretation
-| | High SAMap homology | Low SAMap homology |
-|
+|                                   | High SAMap homology                    | Low SAMap homology          |
+| High species classification score | homology + transcriptional divergence? | Candidate non-homology      |
+| Low species classification score  | homology + strong conservation?        | Ambiguous / poorly resolved |
 
 # Local outlier factor
-The other method we test is a novelty detection method (local outlier factor) which takes a manifold and asks how much a datapoint (e.g., a cell) differs from its closest neighbor.
+The other method we test is a novelty detection method (local outlier factor) which takes a manifold and asks how much a datapoint (e.g., a cell) differs from its closest neighbor. We provide PCA (integrated dataset) from SAMap and it outputs outlier scores which we will aggregate by cell-type annotation and integrate with other sources of information like marker gene expression and lack of SAMap-based homology support. We then characterize candidate species-specific clusters.
+
+# Repository layout
+
+|__ config
+|     |__ WP3_minimal_env.yml       
+|__ notebooks
+|     |__ WP3_notebook_1.ipynb
+|__ scripts
+|__ README.md
+
+# Running the workflow
+
+To be updated after scripts finished.
 
 # References
+* Tarashansky et al. (2021)
