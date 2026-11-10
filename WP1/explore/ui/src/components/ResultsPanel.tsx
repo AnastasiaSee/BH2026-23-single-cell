@@ -66,7 +66,7 @@ const TABLE_COLUMNS: {
   { id: "cells", label: "Cells", width: 72 },
 ];
 
-const DEFAULT_COLUMNS: TableColumnId[] = ["title"];
+const DEFAULT_COLUMNS: TableColumnId[] = ["title", "organism", "cell_type"];
 
 const COL_WIDTH: Record<TableColumnId, number> = Object.fromEntries(
   TABLE_COLUMNS.map((col) => [col.id, col.width])
