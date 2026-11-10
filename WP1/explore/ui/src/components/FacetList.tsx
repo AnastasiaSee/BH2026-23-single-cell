@@ -3,10 +3,13 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  Box,
   Button,
   Checkbox,
-  Stack,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   TextField,
   Typography,
 } from "@mui/material";
@@ -95,7 +98,7 @@ export function FacetList({
           {title}
         </Typography>
       </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0 }}>
+      <AccordionDetails sx={{ pt: 0, px: 0 }}>
         {searchable ? (
           <TextField
             size="small"
@@ -104,52 +107,55 @@ export function FacetList({
             placeholder={`Search ${title.toLowerCase()}…`}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            sx={{ mb: 1 }}
+            sx={{ mb: 1, px: 1.5 }}
           />
         ) : null}
         {error ? (
-          <Typography color="error" variant="caption" display="block" mb={1}>
+          <Typography color="error" variant="caption" display="block" sx={{ mb: 1, px: 1.5 }}>
             {error}
           </Typography>
         ) : null}
-        <Stack spacing={0.25}>
-          {visible.map((row) => (
-            <Box
-              key={row.value}
-              component="label"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.75,
-                width: "100%",
-                cursor: "pointer",
-                minHeight: 32,
-              }}
-            >
-              <Checkbox
-                size="small"
-                checked={selectedSet.has(row.value)}
-                onChange={() => onToggle(row.value)}
-                sx={{ p: 0.5, flexShrink: 0 }}
-              />
-              <Typography
-                variant="body2"
-                sx={{ flex: 1, minWidth: 0, wordBreak: "break-word", lineHeight: 1.35 }}
-              >
-                {row.value}
-              </Typography>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ flexShrink: 0, lineHeight: 1.35 }}
-              >
-                {row.count}
-              </Typography>
-            </Box>
-          ))}
-        </Stack>
+        <List dense disablePadding>
+          {visible.map((row) => {
+            const labelId = `facet-${field}-${row.value}`;
+            const checked = selectedSet.has(row.value);
+            return (
+              <ListItem key={row.value} disablePadding dense>
+                <ListItemButton
+                  role={undefined}
+                  dense
+                  onClick={() => onToggle(row.value)}
+                  sx={{ py: 0.25, alignItems: "center" }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Checkbox
+                      edge="start"
+                      size="small"
+                      tabIndex={-1}
+                      disableRipple
+                      checked={checked}
+                      inputProps={{ "aria-labelledby": labelId }}
+                      sx={{ p: 0.5 }}
+                    />
+                  </ListItemIcon>
+                  <ListItemText
+                    id={labelId}
+                    primary={row.value}
+                    primaryTypographyProps={{
+                      variant: "body2",
+                      sx: { wordBreak: "break-word" },
+                    }}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ pl: 1, flexShrink: 0 }}>
+                    {row.count}
+                  </Typography>
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
         {canShowMore ? (
-          <Button size="small" onClick={() => setShowMore((value) => !value)} sx={{ mt: 1 }}>
+          <Button size="small" onClick={() => setShowMore((value) => !value)} sx={{ mt: 1, ml: 1.5 }}>
             {showMore ? "Show less" : "Show more"}
           </Button>
         ) : null}
