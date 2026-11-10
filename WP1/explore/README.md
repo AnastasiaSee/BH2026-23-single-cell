@@ -1,185 +1,101 @@
 # Unified experiment explore stack (Fenix + Single Cell Portal)
 
-Polished local explore stack over:
+**Primary path: client-side Parquet + DuckDB-WASM** (no search server).
+
+Catalogs:
 
 - [`WP1/fenix/experiments.json`](../fenix/experiments.json) → `source=fenix`
 - [`WP1/single_cell_portal/studies.json`](../single_cell_portal/studies.json) → `source=single_cell_portal`
 
 | Piece | Role |
 |-------|------|
-| **Typesense** (Docker Compose) | Faceted search index |
-| **Python indexer** | Flattens both catalogs → Typesense docs with `source` |
-| **FastAPI** | Holds admin API key, mints search-only key, pivot API, MCP-ready tool routes |
-| **React + Vite + InstantSearch** | Search, facets, Cards/Table/Pivot; clickable pivot cells |
-
-The browser **never** receives the Typesense admin key. InstantSearch loads `/api/search-config` and uses a **search-only** key.
+| **Python exporter** | Flattens both catalogs (+ OLS tissue/cell-type hierarchy) → `ui/public/experiments.parquet` |
+| **React + Vite + DuckDB-WASM** | Search, facets, Cards/Table/Pivot entirely in the browser |
+| **Typesense + FastAPI** *(optional / legacy)* | Still available under `docker-compose` / `api/` if you want InstantSearch or MCP stubs |
 
 ## Prerequisites
 
-- Docker + Docker Compose
-- Python 3.11+
-- Node.js 20+ (for the UI)
+- Python 3.11+ (Parquet export)
+- Node.js 20+ (UI)
 - Catalogs:
   - Fenix: `python3 WP1/fenix/download_experiments.py` (or use the cached file)
   - SCP: `python3 WP1/single_cell_portal/download_studies.py --summarize`
 
-## Quick start
+## Quick start (Parquet + DuckDB only)
 
 ```bash
 cd WP1/explore
-cp -n .env.example .env   # optional; defaults work locally
 
-# 1) Typesense
-docker compose up -d
-
-# 2) Index both catalogs into one collection
-#    (warms OLS tissue hierarchy cache on first run; Fenix curies + SCP labels)
+# 1) Flatten catalogs → Parquet (uses on-disk OLS caches when present)
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r indexer/requirements.txt -r api/requirements.txt
-python indexer/index_experiments.py --recreate
+pip install -r indexer/requirements.txt
+python indexer/export_parquet.py
+# → ui/public/experiments.parquet (~1 MiB for 1500 rows)
 
-# 3) API (search-only keys + MCP stubs + pivot)
-cd api && uvicorn main:app --reload --port 8000
-# → http://127.0.0.1:8000/docs
-
-# 4) UI (new terminal)
-cd WP1/explore/ui
+# 2) UI
+cd ui
 npm install
 npm run dev
 # → http://127.0.0.1:5173
 ```
 
-Vite proxies `/api`, `/mcp`, and `/health` to the FastAPI process. InstantSearch then talks to Typesense on `localhost:8108` with the search-only key from `/api/search-config`.
+Open the UI (or Cursor Try Live on port 5173). The browser downloads the Parquet file and runs DuckDB-WASM locally — no Typesense, no FastAPI, no API keys.
 
-## What gets indexed
+### Refresh data
 
-Every document has a faceted **`source`** (`fenix` or `single_cell_portal`) plus shared facet fields:
+```bash
+python indexer/export_parquet.py          # reuse OLS cache
+python indexer/export_parquet.py --refresh-ols   # re-query OLS
+```
 
-| Field | Fenix | Single Cell Portal |
-|-------|-------|--------------------|
-| `organism` | `organism[].label` | `metadata.species` |
-| `top_organ` | `tissue[].top-organ-name` | `metadata.organ` (also used as tissue) |
-| `tissue` | `tissue[].label` | `metadata.organ` |
-| `tissue_hierarchy.lvl0…lvl5` | OLS UBERON path from `tissue[].ontology_term_id` | Best-effort OLS label → UBERON for `metadata.organ` |
-| `assay` | `assay[].label` | `metadata.library_preparation_protocol` |
-| `disease` | `disease[].label` | `metadata.disease` |
-| `cell_type` | `cell_type[].label` | *(not in SCP search API — empty)* |
-| `cell_type_hierarchy.lvl0…lvl5` | OLS CL path from `cell_type[].ontology_term_id` | *(not in SCP search API — empty)* |
-| `development_stage` | `development_stage[].label` | *(not in SCP search API — empty)* |
-| `sex` | `sex[].label` | `metadata.sex` |
-| `cell_count` | `cell_count` | `cell_count` |
-| `feature_count` | `feature_count` | `gene_count` |
-| `explorer_url` | CELLxGENE explorer | SCP study URL |
+## What is in the Parquet file
 
-Document ids are namespaced (`fenix::…`, `scp::SCP####`) to avoid collisions.
+Same flattened document shape as the Typesense indexer (namespaced ids, `source`, facet lists, `search_blob`, cell counts, explorer URLs), with hierarchy columns renamed for SQL:
 
-Facet string values are **case-normalized** at index time (`canonicalize_facet_value`): case-only variants merge (e.g. `brain`/`Brain` → `Brain`, `10X 3' v2`/`10x 3' v2` → `10x 3' v2`).
+| InstantSearch-style field | Parquet / DuckDB column |
+|---------------------------|-------------------------|
+| `tissue_hierarchy.lvl0…5` | `tissue_hierarchy_lvl0…5` |
+| `cell_type_hierarchy.lvl0…5` | `cell_type_hierarchy_lvl0…5` |
+
+Facet values are case-normalized at export time (`canonicalize_facet_value`).
 
 ### Tissue & cell-type hierarchy (OLS)
 
-At index time the indexer resolves tissues (UBERON) and cell types (CL) via [EBI OLS4](https://www.ebi.ac.uk/ols4/) and writes Algolia-style `*.lvlN` fields (`"Parent > Child > …"`). The UI uses InstantSearch **HierarchicalMenu** for browse, and keeps collapsed flat **Tissue** / **Cell type** facets for search/keyword use.
+Export resolves tissues (UBERON) and cell types (CL) via [EBI OLS4](https://www.ebi.ac.uk/ols4/) using the same caches as Typesense indexing:
 
-| Field prefix | Source | Resolution |
-|--------------|--------|------------|
-| `tissue_hierarchy` | **Fenix** (primary) | `tissue[].ontology_term_id` (and `top-organ-uberon`) → OLS UBERON jstree |
-| `tissue_hierarchy` | **SCP** (best-effort) | exact OLS label search on `metadata.organ`; single-level fallback |
-| `cell_type_hierarchy` | **Fenix** (primary) | `cell_type[].ontology_term_id` → OLS Cell Ontology (CL) jstree |
-| `cell_type_hierarchy` | **SCP** | *(absent in SCP search API — empty)* |
+- `indexer/ols_cache/uberon_paths.json`
+- `indexer/ols_cache/cl_paths.json`
 
-Responses are cached on disk:
+## UI features
 
-- `indexer/ols_cache/uberon_paths.json` (tissue / UBERON)
-- `indexer/ols_cache/cl_paths.json` (cell type / CL)
+- Full-text filter over `title` / `search_blob` / `experiment_id`
+- Facet checklists (list columns use `list_has_any` / `UNNEST`)
+- Cards / Table (with group-by) / Pivot heatmap (click a cell to apply both axes as filters)
+- Pagination in the browser
 
-**Refresh the OLS caches** (e.g. after new tissues/cell types appear, or to pick up ontology updates):
+## Optional: Typesense InstantSearch path
 
 ```bash
-cd WP1/explore
-source .venv/bin/activate
-
-# Tissue (Fenix curies; add --scp for SCP organ labels)
-python indexer/enrich_tissue_hierarchy.py --scp
-
-# Cell type (Fenix CL curies)
-python indexer/enrich_cell_type_hierarchy.py
-
-# Force re-fetch from OLS (ignore existing cache entries)
-python indexer/enrich_tissue_hierarchy.py --refresh --scp
-python indexer/enrich_cell_type_hierarchy.py --refresh
-
-# Or refresh while indexing
-python indexer/index_experiments.py --recreate --refresh-ols
-
-# Skip hierarchy enrichment entirely
-python indexer/index_experiments.py --recreate --skip-ols
-```
-
-Then re-index so Typesense docs pick up the new paths:
-
-```bash
+docker compose up -d
 python indexer/index_experiments.py --recreate
+# then restore an InstantSearch UI or call Typesense directly
 ```
 
-Re-index after refreshing either catalog snapshot as well (same command).
-
-## UI views
-
-- **Cards / Table** — InstantSearch hits; Table has **Group by** section headers
-- **Pivot** — row × column heatmap of dataset counts (respects query + facets). **Click a cell** to apply InstantSearch filters for those attribute values and switch to **Table**
-- **Tissue hierarchy** — InstantSearch HierarchicalMenu over `tissue_hierarchy.lvl*`; flat tissue facet still available
-- **Cell type hierarchy** — InstantSearch HierarchicalMenu over `cell_type_hierarchy.lvl*` (CL); flat cell type facet still available
-
-## API & MCP stubs
-
-| Route | Purpose |
-|-------|---------|
-| `GET /health` | API + Typesense health |
-| `GET /api/search-config` | Host/port/collection + **search-only** key for InstantSearch |
-| `POST /api/multi_search` | Optional proxy (admin key stays server-side) |
-| `POST /api/pivot` | Row × column dataset counts |
-| `GET /mcp/tools` | Tool descriptors (`search_experiments`, `facet_by`) |
-| `POST /mcp/tools/search_experiments` | Server-side search tool |
-| `POST /mcp/tools/facet_by` | Facet counts for one field |
-| `GET /mcp/README` | Notes on wiring a real MCP server |
-
-### Example tool calls
-
-```bash
-curl -s -X POST http://127.0.0.1:8000/mcp/tools/facet_by \
-  -H 'content-type: application/json' \
-  -d '{"field":"source"}' | jq .
-
-curl -s -X POST http://127.0.0.1:8000/api/pivot \
-  -H 'content-type: application/json' \
-  -d '{"row_field":"source","col_field":"organism","max_rows":10,"max_cols":10}' | jq '{found,rows,cols,max_cell}'
-```
-
-### Wiring a real MCP later
-
-Wrap the same handlers with the MCP Python SDK / FastMCP (`@mcp.tool()` → call the Typesense client), or point an MCP HTTP gateway at these routes. Keep the admin key in the MCP/API process only — see `GET /mcp/README`.
+Optional FastAPI MCP stubs: `cd api && uvicorn main:app --reload --port 8000`.
 
 ## Layout
 
 ```
 WP1/explore/
-  docker-compose.yml
-  .env.example
   indexer/
-    index_experiments.py
-    ols_tissue.py
-    ols_cell_type.py
-    enrich_tissue_hierarchy.py
-    enrich_cell_type_hierarchy.py
-    ols_cache/uberon_paths.json   # OLS tissue (UBERON) cache
-    ols_cache/cl_paths.json       # OLS cell type (CL) cache
-  api/main.py
+    export_parquet.py           # primary: JSON catalogs → Parquet
+    index_experiments.py        # optional Typesense indexer
+    ols_*.py / ols_cache/       # OLS hierarchy enrichment
   ui/
-  README.md
-WP1/fenix/                 # Fenix catalog cache
-WP1/single_cell_portal/    # SCP catalog cache
+    public/experiments.parquet  # static artifact served by Vite
+    src/duckdb.ts               # DuckDB-WASM loader + SQL helpers
+    src/App.tsx
+  api/                          # optional MCP stubs
+  docker-compose.yml            # optional Typesense
 ```
-
-## Preference note
-
-Explore path: **Typesense + React InstantSearch (Vite) + FastAPI** for API keys and MCP/chat tools, with a unified multi-source index.

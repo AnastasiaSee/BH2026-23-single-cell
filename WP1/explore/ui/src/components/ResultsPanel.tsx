@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useHits, useInstantSearch } from "react-instantsearch";
+import type { ExperimentRow, FacetSelection } from "../duckdb";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
 import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";
@@ -31,7 +31,11 @@ function groupDomId(key: string): string {
 
 type Props = {
   view: ResultsView;
+  rows: ExperimentRow[];
+  query: string;
+  facets: FacetSelection;
   onOpenHits: () => void;
+  onApplyFacet: (field: string, value: string) => void;
 };
 
 function HitRow({ hit }: { hit: ExperimentHit }) {
@@ -62,9 +66,14 @@ function HitRow({ hit }: { hit: ExperimentHit }) {
   );
 }
 
-export function ResultsPanel({ view, onOpenHits }: Props) {
-  const { items } = useHits<ExperimentHit>();
-  const { setIndexUiState } = useInstantSearch();
+export function ResultsPanel({
+  view,
+  rows,
+  query,
+  facets,
+  onOpenHits,
+  onApplyFacet,
+}: Props) {
   const [groupBy, setGroupBy] = useState<GroupByField>(() => loadStoredGroupBy());
   const [activeChip, setActiveChip] = useState<string | null>(null);
 
@@ -78,8 +87,8 @@ export function ResultsPanel({ view, onOpenHits }: Props) {
   }, [groupBy]);
 
   const groups = useMemo(
-    () => (view === "table" ? groupHits(items, groupBy) : []),
-    [view, items, groupBy]
+    () => (view === "table" ? groupHits(rows, groupBy) : []),
+    [view, rows, groupBy]
   );
 
   const topGroups = useMemo(() => {
@@ -95,158 +104,101 @@ export function ResultsPanel({ view, onOpenHits }: Props) {
 
   const focusGroup = (key: string, label: string) => {
     setActiveChip(key);
-
     if (groupBy === "none" || label === NONE_LABEL) return;
-
-    // Filter only — do not scroll/jump the hits list.
-    setIndexUiState((previous) => ({
-      ...previous,
-      page: 1,
-      refinementList: {
-        ...(previous.refinementList ?? {}),
-        [groupBy]: [label],
-      },
-    }));
+    onApplyFacet(groupBy, label);
+    const el = document.getElementById(groupDomId(key));
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   if (view === "pivot") {
-    return <PivotHeatmap onOpenHits={onOpenHits} />;
-  }
-
-  if (!items.length) {
-    return <p className="empty-results">No experiments match these filters.</p>;
-  }
-
-  if (view === "table") {
-    const grouped = groupBy !== "none";
-
     return (
-      <div className="results-table-stack">
-        <div className="results-table-toolbar">
-          <label className="group-by-control" htmlFor="group-by-select">
-            <span className="group-by-label">Group by</span>
-            <select
-              id="group-by-select"
-              value={groupBy}
-              onChange={(event) => setGroupBy(event.target.value as GroupByField)}
-            >
-              {GROUP_BY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="group-by-hint">
-            {grouped
-              ? "Top groups by count on this page — click a chip to filter InstantSearch."
-              : "Choose an attribute to nest rows under section headers."}
-          </p>
+      <PivotHeatmap
+        query={query}
+        facets={facets}
+        onOpenHits={onOpenHits}
+        onApplyCell={(rowField, rowValue, colField, colValue) => {
+          onApplyFacet(rowField, rowValue);
+          onApplyFacet(colField, colValue);
+          onOpenHits();
+        }}
+      />
+    );
+  }
 
-          {grouped && topGroups.length > 0 ? (
-            <div className="group-chips" role="list" aria-label="Top groups by dataset count">
-              {topGroups.map((group) => {
-                const selected = activeChip === group.key;
-                return (
-                  <button
-                    key={group.key}
-                    type="button"
-                    role="listitem"
-                    className={selected ? "group-chip is-active" : "group-chip"}
-                    title={`${group.label} — ${group.hits.length} on this page; click to filter`}
-                    onClick={() => focusGroup(group.key, group.label)}
-                  >
-                    <span className="group-chip-label">{group.label}</span>
-                    <span className="group-chip-count">{group.hits.length}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="results-table-wrap">
-          <table className="results-table">
-            <thead>
-              <tr>
-                <th scope="col">Title</th>
-                <th scope="col">Source</th>
-                <th scope="col">Organism</th>
-                <th scope="col">Top organ</th>
-                <th scope="col">Assay</th>
-                <th scope="col">Disease</th>
-                <th scope="col">Cell type</th>
-                <th scope="col">Dev. stage</th>
-                <th scope="col" className="num">
-                  Cells
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => (
-                <GroupSection
-                  key={group.key}
-                  id={groupDomId(group.key)}
-                  label={group.label}
-                  count={group.hits.length}
-                  showHeader={grouped}
-                  highlighted={activeChip === group.key}
-                  hits={group.hits}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+  if (view === "cards") {
+    return (
+      <div className="hits-grid">
+        {rows.map((hit) => (
+          <Hit key={hit.objectID} hit={hit} />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="results-card-grid" role="list">
-      {items.map((hit) => (
-        <div key={hit.objectID} role="listitem">
-          <Hit hit={hit} />
-        </div>
+    <div className="table-wrap">
+      <div className="table-toolbar">
+        <label>
+          Group by{" "}
+          <select
+            value={groupBy}
+            onChange={(event) => setGroupBy(event.target.value as GroupByField)}
+          >
+            {GROUP_BY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {topGroups.length ? (
+          <div className="group-chips" aria-label="Top groups">
+            {topGroups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                className={
+                  activeChip === group.key ? "group-chip is-active" : "group-chip"
+                }
+                onClick={() => focusGroup(group.key, group.label)}
+              >
+                {group.label}
+                <span>{group.hits.length}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      {groups.map((group) => (
+        <section key={group.key} id={groupDomId(group.key)} className="group-section">
+          {groupBy !== "none" ? (
+            <h3 className="group-heading">
+              {group.label}{" "}
+              <span className="muted">({group.hits.length})</span>
+            </h3>
+          ) : null}
+          <table className="results-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Source</th>
+                <th>Organism</th>
+                <th>Top organ</th>
+                <th>Assay</th>
+                <th>Disease</th>
+                <th>Cell type</th>
+                <th>Dev. stage</th>
+                <th>Cells</th>
+              </tr>
+            </thead>
+            <tbody>
+              {group.hits.map((hit) => (
+                <HitRow key={`${group.key}-${hit.objectID}`} hit={hit} />
+              ))}
+            </tbody>
+          </table>
+        </section>
       ))}
     </div>
-  );
-}
-
-function GroupSection({
-  id,
-  label,
-  count,
-  showHeader,
-  highlighted,
-  hits,
-}: {
-  id: string;
-  label: string;
-  count: number;
-  showHeader: boolean;
-  highlighted: boolean;
-  hits: ExperimentHit[];
-}) {
-  return (
-    <>
-      {showHeader ? (
-        <tr
-          id={id}
-          className={
-            highlighted ? "group-header-row is-highlighted" : "group-header-row"
-          }
-        >
-          <th scope="colgroup" colSpan={9}>
-            <span className="group-header-label">{label}</span>
-            <span className="group-header-count">
-              {count} {count === 1 ? "experiment" : "experiments"}
-            </span>
-          </th>
-        </tr>
-      ) : null}
-      {hits.map((hit) => (
-        <HitRow key={`${label}-${hit.objectID}`} hit={hit} />
-      ))}
-    </>
   );
 }

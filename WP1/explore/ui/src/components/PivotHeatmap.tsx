@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
-  useCurrentRefinements,
-  useInstantSearch,
-  useSearchBox,
-} from "react-instantsearch";
-import { refinementsToFilterBy } from "./filters";
+  pivotCounts,
+  type FacetField,
+  type FacetSelection,
+  type PivotResult,
+} from "../duckdb";
 
-export const PIVOT_FIELDS: { value: string; label: string }[] = [
+export const PIVOT_FIELDS: { value: FacetField; label: string }[] = [
   { value: "source", label: "Source" },
   { value: "organism", label: "Organism" },
   { value: "top_organ", label: "Top organ" },
@@ -21,27 +21,9 @@ export const PIVOT_FIELDS: { value: string; label: string }[] = [
   { value: "study_journal", label: "Journal" },
 ];
 
-type PivotResponse = {
-  row_field: string;
-  col_field: string;
-  rows: string[];
-  cols: string[];
-  matrix: number[][];
-  row_totals: number[];
-  col_totals: number[];
-  max_cell: number;
-  found: number;
-  docs_scanned: number;
-  truncated_rows: number;
-  truncated_cols: number;
-  q: string;
-  filter_by: string | null;
-};
-
 const STORAGE_KEY = "fenix-explore-pivot-axes";
-const NONE_LABEL = "(none)";
 
-function loadAxes(): { row: string; col: string } {
+function loadAxes(): { row: FacetField; col: FacetField } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -53,7 +35,7 @@ function loadAxes(): { row: string; col: string } {
         PIVOT_FIELDS.some((f) => f.value === parsed.row) &&
         PIVOT_FIELDS.some((f) => f.value === parsed.col)
       ) {
-        return { row: parsed.row, col: parsed.col };
+        return { row: parsed.row as FacetField, col: parsed.col as FacetField };
       }
     }
   } catch {
@@ -76,21 +58,20 @@ function cellStyle(count: number, max: number): CSSProperties {
 }
 
 type Props = {
-  /** Switch the main results pane to a hits view after applying cell filters. */
+  query: string;
+  facets: FacetSelection;
   onOpenHits: () => void;
+  onApplyCell: (
+    rowField: FacetField,
+    rowValue: string,
+    colField: FacetField,
+    colValue: string
+  ) => void;
 };
 
-export function PivotHeatmap({ onOpenHits }: Props) {
-  const { query } = useSearchBox();
-  const { setIndexUiState } = useInstantSearch();
-  const { items: refinementItems } = useCurrentRefinements();
-  const filterBy = useMemo(
-    () => refinementsToFilterBy(refinementItems),
-    [refinementItems]
-  );
-
+export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
   const [axes, setAxes] = useState(loadAxes);
-  const [data, setData] = useState<PivotResponse | null>(null);
+  const [data, setData] = useState<PivotResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -103,90 +84,43 @@ export function PivotHeatmap({ onOpenHits }: Props) {
   }, [axes]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
     setLoading(true);
     setError(null);
-
     const timer = window.setTimeout(() => {
-      fetch("/api/pivot", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          row_field: axes.row,
-          col_field: axes.col,
-          q: query?.trim() ? query.trim() : "*",
-          filter_by: filterBy,
-          max_rows: 18,
-          max_cols: 18,
-        }),
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            const detail = await response.text();
-            throw new Error(detail || `Pivot failed (${response.status})`);
+      pivotCounts(axes.row, axes.col, query, facets)
+        .then((result) => {
+          if (!cancelled) {
+            setData(result);
+            setLoading(false);
           }
-          return response.json() as Promise<PivotResponse>;
         })
-        .then((payload) => {
-          setData(payload);
-          setLoading(false);
-        })
-        .catch((err: Error) => {
-          if (err.name === "AbortError") return;
-          setError(err.message);
-          setLoading(false);
+        .catch((err: unknown) => {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : String(err));
+            setLoading(false);
+          }
         });
-    }, 180);
-
+    }, 150);
     return () => {
-      controller.abort();
+      cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [axes.row, axes.col, query, filterBy]);
-
-  const swapAxes = () => {
-    setAxes((prev) => ({ row: prev.col, col: prev.row }));
-  };
-
-  const drillIntoCell = (rowValue: string, colValue: string, count: number) => {
-    if (!count) return;
-
-    setIndexUiState((previous) => {
-      const refinementList = { ...(previous.refinementList ?? {}) };
-
-      if (rowValue && rowValue !== NONE_LABEL) {
-        refinementList[axes.row] = [rowValue];
-      }
-      if (colValue && colValue !== NONE_LABEL) {
-        refinementList[axes.col] = [colValue];
-      }
-
-      return {
-        ...previous,
-        page: 1,
-        refinementList,
-      };
-    });
-
-    onOpenHits();
-  };
+  }, [axes, query, facets]);
 
   return (
     <div className="pivot-panel">
-      <div className="pivot-toolbar">
-        <label className="group-by-control">
-          <span className="group-by-label">Rows</span>
+      <div className="pivot-controls">
+        <label>
+          Rows{" "}
           <select
             value={axes.row}
-            onChange={(event) => {
-              const next = event.target.value;
-              setAxes((prev) =>
-                next === prev.col
-                  ? { row: next, col: prev.row }
-                  : { ...prev, row: next }
-              );
-            }}
+            onChange={(event) =>
+              setAxes((prev) => ({
+                ...prev,
+                row: event.target.value as FacetField,
+              }))
+            }
           >
             {PIVOT_FIELDS.map((field) => (
               <option key={field.value} value={field.value}>
@@ -195,23 +129,16 @@ export function PivotHeatmap({ onOpenHits }: Props) {
             ))}
           </select>
         </label>
-
-        <button type="button" className="pivot-swap" onClick={swapAxes} title="Swap axes">
-          ⇄
-        </button>
-
-        <label className="group-by-control">
-          <span className="group-by-label">Columns</span>
+        <label>
+          Columns{" "}
           <select
             value={axes.col}
-            onChange={(event) => {
-              const next = event.target.value;
-              setAxes((prev) =>
-                next === prev.row
-                  ? { row: prev.col, col: next }
-                  : { ...prev, col: next }
-              );
-            }}
+            onChange={(event) =>
+              setAxes((prev) => ({
+                ...prev,
+                col: event.target.value as FacetField,
+              }))
+            }
           >
             {PIVOT_FIELDS.map((field) => (
               <option key={field.value} value={field.value}>
@@ -220,94 +147,54 @@ export function PivotHeatmap({ onOpenHits }: Props) {
             ))}
           </select>
         </label>
-
-        <p className="group-by-hint">
-          Cells = dataset counts. Click a cell to filter InstantSearch and open
-          the hits view.
-        </p>
+        {data ? (
+          <p className="pivot-meta">
+            {data.found.toLocaleString()} datasets in filter · click a cell to
+            open matching hits
+          </p>
+        ) : null}
       </div>
-
-      {loading && !data ? <p className="empty-results">Building pivot…</p> : null}
+      {loading ? <p className="muted">Computing pivot…</p> : null}
       {error ? <p className="error">{error}</p> : null}
-
-      {data ? (
-        <>
-          <div className="pivot-meta">
-            <span>
-              {data.found.toLocaleString()} matching experiments
-              {loading ? " · updating…" : ""}
-            </span>
-            {filterBy ? <span className="pivot-filter">Filtered</span> : null}
-            {data.truncated_rows || data.truncated_cols ? (
-              <span>
-                Showing top {data.rows.length}×{data.cols.length}
-                {data.truncated_rows ? ` (+${data.truncated_rows} rows)` : ""}
-                {data.truncated_cols ? ` (+${data.truncated_cols} cols)` : ""}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="pivot-scroll">
-            <table className="pivot-table">
-              <thead>
-                <tr>
-                  <th className="pivot-corner">
-                    {labelFor(axes.row)} × {labelFor(axes.col)}
+      {data && !loading ? (
+        <div className="pivot-scroll">
+          <table className="pivot-table">
+            <thead>
+              <tr>
+                <th />
+                {data.cols.map((col) => (
+                  <th key={col} title={col}>
+                    {col}
                   </th>
-                  {data.cols.map((col, index) => (
-                    <th key={col} title={`${col} · ${data.col_totals[index]} total`}>
-                      <span>{col}</span>
-                      <em>{data.col_totals[index]}</em>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((row, rowIndex) => (
-                  <tr key={row}>
-                    <th scope="row" title={`${row} · ${data.row_totals[rowIndex]} total`}>
-                      <span>{row}</span>
-                      <em>{data.row_totals[rowIndex]}</em>
-                    </th>
-                    {data.cols.map((col, colIndex) => {
-                      const count = data.matrix[rowIndex]?.[colIndex] ?? 0;
-                      const clickable = count > 0;
-                      return (
-                        <td
-                          key={`${row}-${col}`}
-                          style={cellStyle(count, data.max_cell)}
-                          title={
-                            clickable
-                              ? `${row} × ${col}: ${count} — click to show datasets`
-                              : `${row} × ${col}: 0`
-                          }
-                          className={clickable ? "pivot-cell is-clickable" : "pivot-cell"}
-                          role={clickable ? "button" : undefined}
-                          tabIndex={clickable ? 0 : undefined}
-                          onClick={() => drillIntoCell(row, col, count)}
-                          onKeyDown={(event) => {
-                            if (!clickable) return;
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              drillIntoCell(row, col, count);
-                            }
-                          }}
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((row, rowIndex) => (
+                <tr key={row}>
+                  <th title={row}>{row}</th>
+                  {data.cols.map((col, colIndex) => {
+                    const count = data.matrix[rowIndex]?.[colIndex] ?? 0;
+                    return (
+                      <td key={col}>
+                        <button
+                          type="button"
+                          className="pivot-cell"
+                          style={cellStyle(count, data.maxCell)}
+                          disabled={!count}
+                          onClick={() => onApplyCell(axes.row, row, axes.col, col)}
                         >
                           {count || "·"}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </div>
   );
-}
-
-function labelFor(value: string): string {
-  return PIVOT_FIELDS.find((field) => field.value === value)?.label ?? value;
 }

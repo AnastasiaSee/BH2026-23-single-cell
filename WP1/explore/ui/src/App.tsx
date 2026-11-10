@@ -1,123 +1,96 @@
-import { useEffect, useState } from "react";
-import {
-  ClearRefinements,
-  Configure,
-  CurrentRefinements,
-  HierarchicalMenu,
-  InstantSearch,
-  Pagination,
-  RefinementList,
-  SearchBox,
-  Stats,
-} from "react-instantsearch";
+import { useEffect, useMemo, useState } from "react";
+import { FacetList } from "./components/FacetList";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { ViewToggle, type ResultsView } from "./components/ViewToggle";
-import { createSearchClient, loadSearchConfig, type SearchConfig } from "./typesense";
+import {
+  getConnection,
+  searchRows,
+  type ExperimentRow,
+  type FacetField,
+  type FacetSelection,
+} from "./duckdb";
 
-/** InstantSearch HierarchicalMenu attributes (Typesense field.lvlN). */
-const TISSUE_HIERARCHY_ATTRIBUTES = [
-  "tissue_hierarchy.lvl0",
-  "tissue_hierarchy.lvl1",
-  "tissue_hierarchy.lvl2",
-  "tissue_hierarchy.lvl3",
-  "tissue_hierarchy.lvl4",
-  "tissue_hierarchy.lvl5",
-];
-
-const CELL_TYPE_HIERARCHY_ATTRIBUTES = [
-  "cell_type_hierarchy.lvl0",
-  "cell_type_hierarchy.lvl1",
-  "cell_type_hierarchy.lvl2",
-  "cell_type_hierarchy.lvl3",
-  "cell_type_hierarchy.lvl4",
-  "cell_type_hierarchy.lvl5",
-];
+const PAGE_SIZE = 24;
 
 const FACET_PANELS: {
-  attribute: string;
+  field: FacetField;
   title: string;
   searchable?: boolean;
   open?: boolean;
-  /** Omit / false for low-cardinality facets so stock RefinementList has no Show more. */
-  showMore?: boolean;
+  limit?: number;
 }[] = [
-  { attribute: "source", title: "Source", showMore: false },
-  { attribute: "organism", title: "Organism", showMore: false },
-  { attribute: "top_organ", title: "Top organ", searchable: true, showMore: true },
-  // Flat tissue kept as a searchable fallback beside the OLS hierarchy menu.
+  { field: "source", title: "Source" },
+  { field: "organism", title: "Organism" },
+  { field: "top_organ", title: "Top organ", searchable: true },
+  { field: "tissue_hierarchy_lvl0", title: "Tissue hierarchy", searchable: true },
   {
-    attribute: "tissue",
+    field: "tissue",
     title: "Tissue (flat)",
     searchable: true,
     open: false,
-    showMore: true,
   },
-  { attribute: "tissue_type", title: "Tissue type", open: false, showMore: false },
-  { attribute: "assay", title: "Assay", searchable: true, showMore: true },
-  { attribute: "disease", title: "Disease", searchable: true, showMore: true },
-  // Flat cell type kept as a searchable fallback beside the CL hierarchy menu.
+  { field: "tissue_type", title: "Tissue type", open: false },
+  { field: "assay", title: "Assay", searchable: true },
+  { field: "disease", title: "Disease", searchable: true },
   {
-    attribute: "cell_type",
+    field: "cell_type_hierarchy_lvl0",
+    title: "Cell type hierarchy",
+    searchable: true,
+  },
+  {
+    field: "cell_type",
     title: "Cell type (flat)",
     searchable: true,
     open: false,
-    showMore: true,
   },
   {
-    attribute: "development_stage",
+    field: "development_stage",
     title: "Development stage",
     searchable: true,
     open: false,
-    showMore: true,
   },
-  { attribute: "suspension_type", title: "Suspension", showMore: false },
-  { attribute: "sex", title: "Sex", showMore: false },
+  { field: "suspension_type", title: "Suspension" },
+  { field: "sex", title: "Sex" },
   {
-    attribute: "study_journal",
+    field: "study_journal",
     title: "Journal",
     searchable: true,
     open: false,
-    showMore: true,
   },
 ];
 
-const VIEW_STORAGE_KEY = "fenix-explore-results-view";
-
-function loadStoredView(): ResultsView {
-  try {
-    const value = localStorage.getItem(VIEW_STORAGE_KEY);
-    if (value === "cards" || value === "table" || value === "pivot") return value;
-  } catch {
-    // ignore private-mode / SSR storage failures
-  }
-  return "cards";
+function toggleValue(values: string[] | undefined, value: string): string[] {
+  const current = values ?? [];
+  return current.includes(value)
+    ? current.filter((item) => item !== value)
+    : [...current, value];
 }
 
-type ReadyState = {
-  config: SearchConfig;
-  searchClient: ReturnType<typeof createSearchClient>["searchClient"];
-  indexName: string;
-};
-
 export default function App() {
-  const [ready, setReady] = useState<ReadyState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ResultsView>(() => loadStoredView());
+  const [ready, setReady] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [facets, setFacets] = useState<FacetSelection>({});
+  const [view, setView] = useState<ResultsView>("cards");
+  const [page, setPage] = useState(0);
+  const [rows, setRows] = useState<ExperimentRow[]>([]);
+  const [found, setFound] = useState(0);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    loadSearchConfig()
-      .then((config) => {
-        if (cancelled) return;
-        const { searchClient, indexName } = createSearchClient(config);
-        setReady({ config, searchClient, indexName });
-      })
-      .catch((err: Error) => {
+    getConnection()
+      .then(() => {
         if (!cancelled) {
-          setError(
-            err.message +
-              " — start the FastAPI backend (`uvicorn main:app`) and Typesense first."
-          );
+          setReady(true);
+          setBootError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setBootError(err instanceof Error ? err.message : String(err));
         }
       });
     return () => {
@@ -126,145 +99,208 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_STORAGE_KEY, view);
-    } catch {
-      // ignore
-    }
-  }, [view]);
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 180);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
-  if (error) {
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedQuery, facets]);
+
+  useEffect(() => {
+    if (!ready || view === "pivot") return;
+    let cancelled = false;
+    setSearching(true);
+    searchRows(debouncedQuery, facets, {
+      offset: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setRows(result.rows);
+          setFound(result.found);
+          setSearchError(null);
+          setSearching(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setSearchError(err instanceof Error ? err.message : String(err));
+          setSearching(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, debouncedQuery, facets, page, view]);
+
+  const activeRefinements = useMemo(
+    () =>
+      Object.entries(facets).flatMap(([field, values]) =>
+        values.map((value) => ({ field, value }))
+      ),
+    [facets]
+  );
+
+  const pageCount = Math.max(1, Math.ceil(found / PAGE_SIZE));
+
+  const onToggleFacet = (field: FacetField, value: string) => {
+    setFacets((prev) => {
+      const next = { ...prev, [field]: toggleValue(prev[field], value) };
+      if (!next[field]?.length) {
+        delete next[field];
+      }
+      return next;
+    });
+  };
+
+  const onApplyFacet = (field: string, value: string) => {
+    if (value === "(none)") return;
+    onToggleFacet(field as FacetField, value);
+  };
+
+  if (bootError) {
     return (
-      <main className="shell">
+      <div className="shell">
         <header className="hero">
-          <p className="eyebrow">WP1 · Fenix</p>
-          <h1>Experiment explore</h1>
+          <p className="eyebrow">WP1 explore</p>
+          <h1>Single-cell catalogs</h1>
         </header>
-        <p className="error">{error}</p>
-      </main>
+        <p className="error">
+          {bootError}
+          <br />
+          Export Parquet first:{" "}
+          <code>python indexer/export_parquet.py</code>
+        </p>
+      </div>
     );
   }
 
   if (!ready) {
     return (
-      <main className="shell">
+      <div className="shell">
         <header className="hero">
-          <p className="eyebrow">WP1 · Fenix</p>
-          <h1>Experiment explore</h1>
-          <p className="lede">Loading search configuration…</p>
+          <p className="eyebrow">WP1 explore</p>
+          <h1>Single-cell catalogs</h1>
+          <p className="lede">Loading Parquet into DuckDB-WASM…</p>
         </header>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="shell">
+    <div className="shell">
       <header className="hero">
-        <p className="eyebrow">WP1 · Fenix / CELLxGENE</p>
-        <h1>Experiment explore</h1>
+        <p className="eyebrow">WP1 explore</p>
+        <h1>Single-cell catalogs</h1>
         <p className="lede">
-          Faceted search over the Fenix experiment catalog. Keys stay on the
-          FastAPI side; InstantSearch uses a search-only Typesense key.
+          Fully client-side explore over Fenix + Single Cell Portal — Parquet in
+          the browser, queried with DuckDB-WASM. No Typesense or FastAPI required.
         </p>
       </header>
 
-      <InstantSearch
-        searchClient={ready.searchClient}
-        indexName={ready.indexName}
-        future={{ preserveSharedStateOnUnmount: true }}
-      >
-        <Configure
-          hitsPerPage={12}
-          attributesToRetrieve={[
-            "title",
-            "source",
-            "organism",
-            "top_organ",
-            "tissue",
-            "assay",
-            "disease",
-            "cell_type",
-            "development_stage",
-            "suspension_type",
-            "cell_count",
-            "feature_count",
-            "explorer_url",
-            "experiment_id",
-            "study_journal",
-          ]}
-        />
-
-        <section className="toolbar">
-          <SearchBox
-            placeholder="Search title, tissue, assay, cell type…"
-            autoFocus
-          />
-          <div className="toolbar-meta">
-            <Stats />
-            <div className="toolbar-actions">
-              <ViewToggle value={view} onChange={setView} />
-              <ClearRefinements translations={{ resetButtonText: "Clear filters" }} />
-            </div>
+      <div className="layout">
+        <aside className="facets">
+          <div className="facet-actions">
+            <button
+              type="button"
+              className="ais-ClearRefinements-button"
+              disabled={!activeRefinements.length && !query}
+              onClick={() => {
+                setQuery("");
+                setFacets({});
+              }}
+            >
+              Clear filters
+            </button>
           </div>
-          <CurrentRefinements />
-        </section>
-
-        <div className="layout">
-          <aside className="facets">
-            <details open>
-              <summary>Tissue hierarchy</summary>
-              <p className="facet-hint">
-                UBERON paths from OLS (Fenix IDs; SCP labels best-effort).
-              </p>
-              <HierarchicalMenu
-                attributes={TISSUE_HIERARCHY_ATTRIBUTES}
-                separator=" > "
-                showMore={true}
-                limit={12}
-                showMoreLimit={100}
-                sortBy={["count:desc"]}
-              />
-            </details>
-            <details open>
-              <summary>Cell type hierarchy</summary>
-              <p className="facet-hint">
-                Cell Ontology (CL) paths from OLS (Fenix IDs; SCP has no cell_type).
-              </p>
-              <HierarchicalMenu
-                attributes={CELL_TYPE_HIERARCHY_ATTRIBUTES}
-                separator=" > "
-                showMore={true}
-                limit={12}
-                showMoreLimit={100}
-                sortBy={["count:desc"]}
-              />
-            </details>
-            {FACET_PANELS.map((panel) => (
-              <details
-                key={panel.attribute}
-                open={panel.open !== false}
-              >
-                <summary>{panel.title}</summary>
-                <RefinementList
-                  attribute={panel.attribute}
-                  searchable={panel.searchable}
-                  showMore={panel.showMore !== false}
-                  limit={8}
-                  searchablePlaceholder={`Filter ${panel.title.toLowerCase()}…`}
-                />
-              </details>
-            ))}
-          </aside>
-
-          <section className="results" data-view={view}>
-            <ResultsPanel
-              view={view}
-              onOpenHits={() => setView("table")}
+          {FACET_PANELS.map((panel) => (
+            <FacetList
+              key={panel.field}
+              field={panel.field}
+              title={panel.title}
+              query={debouncedQuery}
+              facets={facets}
+              selected={facets[panel.field] ?? []}
+              searchable={panel.searchable}
+              open={panel.open}
+              limit={panel.limit}
+              onToggle={(value) => onToggleFacet(panel.field, value)}
             />
-            {view !== "pivot" ? <Pagination /> : null}
-          </section>
-        </div>
-      </InstantSearch>
-    </main>
+          ))}
+        </aside>
+
+        <main className="results">
+          <div className="results-toolbar">
+            <input
+              className="search-box"
+              type="search"
+              placeholder="Search titles, tissues, assays…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <ViewToggle value={view} onChange={setView} />
+          </div>
+
+          {activeRefinements.length ? (
+            <ul className="current-refinements">
+              {activeRefinements.map(({ field, value }) => (
+                <li key={`${field}:${value}`}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleFacet(field as FacetField, value)}
+                  >
+                    {field}: {value} ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <div className="results-meta">
+            <p>
+              {view === "pivot"
+                ? "Pivot view"
+                : searching
+                  ? "Searching…"
+                  : `${found.toLocaleString()} datasets`}
+            </p>
+          </div>
+
+          {searchError ? <p className="error">{searchError}</p> : null}
+
+          <ResultsPanel
+            view={view}
+            rows={rows}
+            query={debouncedQuery}
+            facets={facets}
+            onOpenHits={() => setView("table")}
+            onApplyFacet={onApplyFacet}
+          />
+
+          {view !== "pivot" && found > PAGE_SIZE ? (
+            <div className="pagination">
+              <button
+                type="button"
+                disabled={page <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Previous
+              </button>
+              <span>
+                Page {page + 1} / {pageCount}
+              </span>
+              <button
+                type="button"
+                disabled={page + 1 >= pageCount}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+        </main>
+      </div>
+    </div>
   );
 }

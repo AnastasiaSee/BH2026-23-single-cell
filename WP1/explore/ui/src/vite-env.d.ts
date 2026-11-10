@@ -1,9 +1,11 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_API_BASE?: string;
+declare module "*.wasm?url" {
+  const src: string;
+  export default src;
 }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+declare module "*?url" {
+  const src: string;
+  export default src;
 }

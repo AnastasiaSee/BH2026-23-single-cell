@@ -881,3 +881,75 @@ a {
     justify-content: space-between;
   }
 }
+
+.search-box {
+  flex: 1;
+  min-width: 12rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  font: inherit;
+}
+
+.facet-search {
+  width: 100%;
+  margin-bottom: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.facet-error {
+  color: var(--warn);
+  font-size: 0.85rem;
+}
+
+.current-refinements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.current-refinements button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  padding: 0.25rem 0.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.pagination button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.facet-actions {
+  margin-bottom: 0.75rem;
+}

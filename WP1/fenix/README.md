@@ -64,7 +64,7 @@ Identifiers / links: `experiment_id`, `study_id`, `explorer_url`, `assets[].url`
 
 ## Implemented explore stack
 
-**Typesense + React InstantSearch + FastAPI (MCP-ready)** is scaffolded in [`../explore/`](../explore/). See that README for `compose up` → index → API → UI.
+**Parquet + DuckDB-WASM (client-side)** is the primary explore path in [`../explore/`](../explore/). Typesense/FastAPI remain optional. See that README for `export_parquet.py` → `npm run dev`.
 
 ## Proposed search UI stacks (context / alternatives)
 
