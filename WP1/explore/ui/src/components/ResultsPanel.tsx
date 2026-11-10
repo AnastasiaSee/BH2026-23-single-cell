@@ -1,4 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Box,
+  Chip,
+  FormControl,
+  InputLabel,
+  Link,
+  MenuItem,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import type { ExperimentRow, FacetSelection } from "../catalogQuery";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
 import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
@@ -41,28 +58,30 @@ type Props = {
 function HitRow({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
   return (
-    <tr>
-      <td className="title-cell">
+    <TableRow hover>
+      <TableCell>
         {hit.explorer_url ? (
-          <a href={hit.explorer_url} target="_blank" rel="noreferrer">
+          <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
             {title}
-          </a>
+          </Link>
         ) : (
           title
         )}
         {hit.study_journal && hit.study_journal !== "unknown" ? (
-          <span className="row-sub">{hit.study_journal}</span>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {hit.study_journal}
+          </Typography>
         ) : null}
-      </td>
-      <td>{hit.source || "—"}</td>
-      <td>{joinValues(hit.organism, 2)}</td>
-      <td>{joinValues(hit.top_organ, 2)}</td>
-      <td>{joinValues(hit.assay, 2)}</td>
-      <td>{joinValues(hit.disease, 2)}</td>
-      <td>{joinValues(hit.cell_type, 2)}</td>
-      <td>{joinValues(hit.development_stage, 2)}</td>
-      <td className="num">{(hit.cell_count ?? 0).toLocaleString()}</td>
-    </tr>
+      </TableCell>
+      <TableCell>{hit.source || "—"}</TableCell>
+      <TableCell>{joinValues(hit.organism, 2)}</TableCell>
+      <TableCell>{joinValues(hit.top_organ, 2)}</TableCell>
+      <TableCell>{joinValues(hit.assay, 2)}</TableCell>
+      <TableCell>{joinValues(hit.disease, 2)}</TableCell>
+      <TableCell>{joinValues(hit.cell_type, 2)}</TableCell>
+      <TableCell>{joinValues(hit.development_stage, 2)}</TableCell>
+      <TableCell align="right">{(hit.cell_count ?? 0).toLocaleString()}</TableCell>
+    </TableRow>
   );
 }
 
@@ -127,78 +146,96 @@ export function ResultsPanel({
 
   if (view === "cards") {
     return (
-      <div className="hits-grid">
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "repeat(2, minmax(0, 1fr))",
+          },
+        }}
+      >
         {rows.map((hit) => (
           <Hit key={hit.objectID} hit={hit} />
         ))}
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="table-wrap">
-      <div className="table-toolbar">
-        <label>
-          Group by{" "}
-          <select
+    <Stack spacing={2}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ sm: "center" }}
+        flexWrap="wrap"
+        useFlexGap
+      >
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel id="group-by-label">Group by</InputLabel>
+          <Select
+            labelId="group-by-label"
+            label="Group by"
             value={groupBy}
             onChange={(event) => setGroupBy(event.target.value as GroupByField)}
           >
             {GROUP_BY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
+              <MenuItem key={option.value} value={option.value}>
                 {option.label}
-              </option>
+              </MenuItem>
             ))}
-          </select>
-        </label>
+          </Select>
+        </FormControl>
         {topGroups.length ? (
-          <div className="group-chips" aria-label="Top groups">
+          <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
             {topGroups.map((group) => (
-              <button
+              <Chip
                 key={group.key}
-                type="button"
-                className={
-                  activeChip === group.key ? "group-chip is-active" : "group-chip"
-                }
+                clickable
+                color={activeChip === group.key ? "primary" : "default"}
+                label={`${group.label} (${group.hits.length})`}
                 onClick={() => focusGroup(group.key, group.label)}
-              >
-                {group.label}
-                <span>{group.hits.length}</span>
-              </button>
+              />
             ))}
-          </div>
+          </Stack>
         ) : null}
-      </div>
+      </Stack>
+
       {groups.map((group) => (
-        <section key={group.key} id={groupDomId(group.key)} className="group-section">
+        <Box key={group.key} id={groupDomId(group.key)}>
           {groupBy !== "none" ? (
-            <h3 className="group-heading">
+            <Typography variant="subtitle1" fontWeight={700} mb={1}>
               {group.label}{" "}
-              <span className="muted">({group.hits.length})</span>
-            </h3>
+              <Typography component="span" color="text.secondary">
+                ({group.hits.length})
+              </Typography>
+            </Typography>
           ) : null}
-          <table className="results-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Source</th>
-                <th>Organism</th>
-                <th>Top organ</th>
-                <th>Assay</th>
-                <th>Disease</th>
-                <th>Cell type</th>
-                <th>Dev. stage</th>
-                <th>Cells</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.hits.map((hit) => (
-                <HitRow key={`${group.key}-${hit.objectID}`} hit={hit} />
-              ))}
-            </tbody>
-          </table>
-        </section>
+          <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Title</TableCell>
+                  <TableCell>Source</TableCell>
+                  <TableCell>Organism</TableCell>
+                  <TableCell>Top organ</TableCell>
+                  <TableCell>Assay</TableCell>
+                  <TableCell>Disease</TableCell>
+                  <TableCell>Cell type</TableCell>
+                  <TableCell>Dev. stage</TableCell>
+                  <TableCell align="right">Cells</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {group.hits.map((hit) => (
+                  <HitRow key={`${group.key}-${hit.objectID}`} hit={hit} />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       ))}
-    </div>
+    </Stack>
   );
 }

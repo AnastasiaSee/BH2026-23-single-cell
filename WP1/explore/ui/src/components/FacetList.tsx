@@ -1,5 +1,18 @@
 import { useEffect, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import {
   facetCounts,
   type FacetCount,
   type FacetField,
@@ -66,52 +79,84 @@ export function FacetList({
   const canShowMore = filtered.length > limit;
 
   return (
-    <details
-      className="ais-Panel"
-      open={expanded}
-      onToggle={(event) => setExpanded((event.target as HTMLDetailsElement).open)}
+    <Accordion
+      disableGutters
+      elevation={0}
+      expanded={expanded}
+      onChange={(_, next) => setExpanded(next)}
+      sx={{
+        bgcolor: "transparent",
+        borderBottom: 1,
+        borderColor: "divider",
+        "&:before": { display: "none" },
+      }}
     >
-      <summary className="ais-Panel-header">{title}</summary>
-      <div className="ais-Panel-body">
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle2" fontWeight={700}>
+          {title}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
         {searchable ? (
-          <input
-            className="facet-search"
+          <TextField
+            size="small"
+            fullWidth
             type="search"
             placeholder={`Search ${title.toLowerCase()}…`}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            sx={{ mb: 1 }}
           />
         ) : null}
-        {error ? <p className="facet-error">{error}</p> : null}
-        <ul className="ais-RefinementList-list">
-          {visible.map((row) => {
-            const isChecked = selectedSet.has(row.value);
-            return (
-              <li key={row.value} className="ais-RefinementList-item">
-                <label className="ais-RefinementList-label">
-                  <input
-                    className="ais-RefinementList-checkbox"
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => onToggle(row.value)}
-                  />
-                  <span className="ais-RefinementList-labelText">{row.value}</span>
-                  <span className="ais-RefinementList-count">{row.count}</span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-        {canShowMore ? (
-          <button
-            type="button"
-            className="ais-RefinementList-showMore"
-            onClick={() => setShowMore((value) => !value)}
-          >
-            {showMore ? "Show less" : "Show more"}
-          </button>
+        {error ? (
+          <Typography color="error" variant="caption" display="block" mb={1}>
+            {error}
+          </Typography>
         ) : null}
-      </div>
-    </details>
+        <Stack spacing={0.25}>
+          {visible.map((row) => (
+            <FormControlLabel
+              key={row.value}
+              sx={{
+                m: 0,
+                alignItems: "flex-start",
+                width: "100%",
+                gap: 0.5,
+                ".MuiFormControlLabel-label": { flex: 1, minWidth: 0 },
+              }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={selectedSet.has(row.value)}
+                  onChange={() => onToggle(row.value)}
+                />
+              }
+              label={
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    width: "100%",
+                  }}
+                >
+                  <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+                    {row.value}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {row.count}
+                  </Typography>
+                </Box>
+              }
+            />
+          ))}
+        </Stack>
+        {canShowMore ? (
+          <Button size="small" onClick={() => setShowMore((value) => !value)} sx={{ mt: 1 }}>
+            {showMore ? "Show less" : "Show more"}
+          </Button>
+        ) : null}
+      </AccordionDetails>
+    </Accordion>
   );
 }

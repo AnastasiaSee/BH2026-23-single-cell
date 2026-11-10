@@ -10,7 +10,7 @@ Catalogs:
 | Piece | Role |
 |-------|------|
 | **Python exporter** | Flattens catalogs (+ OLS tissue/cell-type hierarchy) → `ui/public/experiments.parquet` |
-| **React + Vite + hyparquet** | Loads Parquet in the browser (~0.5 MiB data + ~0.5 MiB JS); search/facets/pivot in memory |
+| **React + Vite + MUI + hyparquet** | MUI widgets; loads Parquet in the browser; search/facets/pivot in memory |
 
 > Why not DuckDB-WASM? Its `.wasm` is ~34 MiB and dominated cold start (~30s). For a few hundred catalog rows, hyparquet + JS filters is enough.
 

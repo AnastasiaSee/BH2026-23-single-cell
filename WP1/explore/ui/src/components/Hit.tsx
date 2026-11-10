@@ -1,3 +1,14 @@
+import type { ReactNode } from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Link,
+  Stack,
+  Typography,
+} from "@mui/material";
+
 export type ExperimentHit = {
   objectID: string;
   title?: string;
@@ -34,74 +45,78 @@ export function joinValues(values?: string[], limit = 3): string {
 }
 
 function chips(values?: string[], limit = 4) {
-  if (!values?.length) return <span className="empty-cell">—</span>;
+  if (!values?.length) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        —
+      </Typography>
+    );
+  }
   const shown = values.slice(0, limit);
   const rest = values.length - shown.length;
   return (
-    <ul className="chip-row">
+    <Stack direction="row" flexWrap="wrap" useFlexGap gap={0.5}>
       {shown.map((value) => (
-        <li key={value}>{value}</li>
+        <Chip key={value} size="small" label={value} variant="outlined" />
       ))}
-      {rest > 0 ? <li className="muted">+{rest}</li> : null}
-    </ul>
+      {rest > 0 ? <Chip size="small" label={`+${rest}`} variant="outlined" /> : null}
+    </Stack>
+  );
+}
+
+function FacetBlock({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+        {label}
+      </Typography>
+      <Box mt={0.5}>{children}</Box>
+    </Box>
   );
 }
 
 export function Hit({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
   return (
-    <article className="hit">
-      <header className="hit-header">
-        <h3>
+    <Card variant="outlined" sx={{ height: "100%" }}>
+      <CardContent>
+        <Typography variant="h6" component="h3" gutterBottom>
           {hit.explorer_url ? (
-            <a href={hit.explorer_url} target="_blank" rel="noreferrer">
+            <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
               {title}
-            </a>
+            </Link>
           ) : (
             title
           )}
-        </h3>
-        <p className="hit-meta">
-          {hit.source ? <span className="source-pill">{formatSource(hit.source)}</span> : null}
-          <span>{(hit.cell_count ?? 0).toLocaleString()} cells</span>
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} mb={2}>
+          {hit.source ? (
+            <Chip size="small" color="primary" label={formatSource(hit.source)} />
+          ) : null}
+          <Chip size="small" label={`${(hit.cell_count ?? 0).toLocaleString()} cells`} />
           {hit.feature_count ? (
-            <span>{hit.feature_count.toLocaleString()} features</span>
+            <Chip size="small" label={`${hit.feature_count.toLocaleString()} features`} />
           ) : null}
           {hit.study_journal && hit.study_journal !== "unknown" ? (
-            <span>{hit.study_journal}</span>
+            <Chip size="small" variant="outlined" label={hit.study_journal} />
           ) : null}
-        </p>
-      </header>
-      <dl className="hit-facets">
-        <div>
-          <dt>Organism</dt>
-          <dd>{chips(hit.organism)}</dd>
-        </div>
-        <div>
-          <dt>Top organ</dt>
-          <dd>{chips(hit.top_organ)}</dd>
-        </div>
-        <div>
-          <dt>Tissue</dt>
-          <dd>{chips(hit.tissue, 5)}</dd>
-        </div>
-        <div>
-          <dt>Assay</dt>
-          <dd>{chips(hit.assay)}</dd>
-        </div>
-        <div>
-          <dt>Disease</dt>
-          <dd>{chips(hit.disease)}</dd>
-        </div>
-        <div>
-          <dt>Cell type</dt>
-          <dd>{chips(hit.cell_type, 4)}</dd>
-        </div>
-        <div>
-          <dt>Dev. stage</dt>
-          <dd>{chips(hit.development_stage, 3)}</dd>
-        </div>
-      </dl>
-    </article>
+        </Stack>
+        <Box
+          sx={{
+            display: "grid",
+            gap: 1.25,
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+          }}
+        >
+          <FacetBlock label="Organism">{chips(hit.organism)}</FacetBlock>
+          <FacetBlock label="Top organ">{chips(hit.top_organ)}</FacetBlock>
+          <FacetBlock label="Tissue">{chips(hit.tissue, 5)}</FacetBlock>
+          <FacetBlock label="Assay">{chips(hit.assay)}</FacetBlock>
+          <FacetBlock label="Disease">{chips(hit.disease)}</FacetBlock>
+          <FacetBlock label="Cell type">{chips(hit.cell_type, 4)}</FacetBlock>
+          <FacetBlock label="Dev. stage">{chips(hit.development_stage, 3)}</FacetBlock>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,4 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Container,
+  Pagination,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import InputAdornment from "@mui/material/InputAdornment";
 import { FacetList } from "./components/FacetList";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { ViewToggle, type ResultsView } from "./components/ViewToggle";
@@ -161,56 +176,67 @@ export default function App() {
 
   if (bootError) {
     return (
-      <div className="shell">
-        <header className="hero">
-          <h1>scFair datasets</h1>
-        </header>
-        <p className="error">
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h1" fontSize={{ xs: "2rem", md: "2.75rem" }} gutterBottom>
+          scFair datasets
+        </Typography>
+        <Alert severity="error">
           {bootError}
-          <br />
-          Export Parquet first:{" "}
-          <code>python indexer/export_parquet.py</code>
-        </p>
-      </div>
+          <Box component="span" display="block" mt={1}>
+            Export Parquet first: <code>python indexer/export_parquet.py</code>
+          </Box>
+        </Alert>
+      </Container>
     );
   }
 
   if (!ready) {
     return (
-      <div className="shell">
-        <header className="hero">
-          <h1>scFair datasets</h1>
-          <p className="lede">Loading catalog…</p>
-        </header>
-      </div>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h1" fontSize={{ xs: "2rem", md: "2.75rem" }} gutterBottom>
+          scFair datasets
+        </Typography>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <CircularProgress size={22} />
+          <Typography color="text.secondary">Loading catalog…</Typography>
+        </Stack>
+      </Container>
     );
   }
 
   return (
-    <div className="shell">
-      <header className="hero">
-        <h1>scFair datasets</h1>
-        <p className="lede">
-          Browse and filter single-cell datasets by organism, tissue, assay, and
-          more.
-        </p>
-      </header>
+    <Container maxWidth="lg" sx={{ py: 4, pb: 8 }}>
+      <Box mb={3}>
+        <Typography variant="h1" fontSize={{ xs: "2rem", md: "2.75rem" }} gutterBottom>
+          scFair datasets
+        </Typography>
+        <Typography color="text.secondary" maxWidth="42rem">
+          Browse and filter single-cell datasets by organism, tissue, assay, and more.
+        </Typography>
+      </Box>
 
-      <div className="layout">
-        <aside className="facets">
-          <div className="facet-actions">
-            <button
-              type="button"
-              className="ais-ClearRefinements-button"
-              disabled={!activeRefinements.length && !query}
-              onClick={() => {
-                setQuery("");
-                setFacets({});
-              }}
-            >
-              Clear filters
-            </button>
-          </div>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2.5,
+          gridTemplateColumns: { xs: "1fr", md: "280px minmax(0, 1fr)" },
+          alignItems: "start",
+        }}
+      >
+        <Paper variant="outlined" sx={{ p: 1.5, position: { md: "sticky" }, top: { md: 16 } }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            size="small"
+            disabled={!activeRefinements.length && !query}
+            onClick={() => {
+              setQuery("");
+              setFacets({});
+            }}
+            sx={{ mb: 1 }}
+          >
+            Clear filters
+          </Button>
           {FACET_PANELS.map((panel) => (
             <FacetList
               key={panel.field}
@@ -225,46 +251,58 @@ export default function App() {
               onToggle={(value) => onToggleFacet(panel.field, value)}
             />
           ))}
-        </aside>
+        </Paper>
 
-        <main className="results">
-          <div className="results-toolbar">
-            <input
-              className="search-box"
+        <Box>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ sm: "center" }}
+            mb={2}
+          >
+            <TextField
+              fullWidth
+              size="small"
               type="search"
               placeholder="Search titles, tissues, assays…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
             />
             <ViewToggle value={view} onChange={setView} />
-          </div>
+          </Stack>
 
           {activeRefinements.length ? (
-            <ul className="current-refinements">
+            <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} mb={2}>
               {activeRefinements.map(({ field, value }) => (
-                <li key={`${field}:${value}`}>
-                  <button
-                    type="button"
-                    onClick={() => onToggleFacet(field as FacetField, value)}
-                  >
-                    {field}: {value} ×
-                  </button>
-                </li>
+                <Chip
+                  key={`${field}:${value}`}
+                  label={`${field}: ${value}`}
+                  onDelete={() => onToggleFacet(field as FacetField, value)}
+                />
               ))}
-            </ul>
+            </Stack>
           ) : null}
 
-          <div className="results-meta">
-            <p>
-              {view === "pivot"
-                ? "Pivot view"
-                : searching
-                  ? "Searching…"
-                  : `${found.toLocaleString()} datasets`}
-            </p>
-          </div>
+          <Typography variant="body2" color="text.secondary" mb={1.5}>
+            {view === "pivot"
+              ? "Pivot view"
+              : searching
+                ? "Searching…"
+                : `${found.toLocaleString()} datasets`}
+          </Typography>
 
-          {searchError ? <p className="error">{searchError}</p> : null}
+          {searchError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {searchError}
+            </Alert>
+          ) : null}
 
           <ResultsPanel
             view={view}
@@ -276,28 +314,17 @@ export default function App() {
           />
 
           {view !== "pivot" && found > PAGE_SIZE ? (
-            <div className="pagination">
-              <button
-                type="button"
-                disabled={page <= 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </button>
-              <span>
-                Page {page + 1} / {pageCount}
-              </span>
-              <button
-                type="button"
-                disabled={page + 1 >= pageCount}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </button>
-            </div>
+            <Stack alignItems="center" mt={3}>
+              <Pagination
+                color="primary"
+                page={page + 1}
+                count={pageCount}
+                onChange={(_, next) => setPage(next - 1)}
+              />
+            </Stack>
           ) : null}
-        </main>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Container>
   );
 }
