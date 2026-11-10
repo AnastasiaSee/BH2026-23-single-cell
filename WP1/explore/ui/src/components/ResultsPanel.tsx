@@ -126,6 +126,8 @@ function loadStoredColumns(): TableColumnId[] {
     if (!raw) return DEFAULT_COLUMNS;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return DEFAULT_COLUMNS;
+    // Upgrade prior title-only default to the new default set.
+    if (parsed.length === 1 && parsed[0] === "title") return DEFAULT_COLUMNS;
     const valid = parsed.filter((id): id is TableColumnId =>
       TABLE_COLUMNS.some((col) => col.id === id)
     );
