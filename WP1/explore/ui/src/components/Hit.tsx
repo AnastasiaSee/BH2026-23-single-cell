@@ -46,7 +46,17 @@ export function joinValues(values?: string[], limit = 3): string {
 }
 
 /** Attribute lists: at most 3 value chips, then a single +n chip. */
-function chips(values?: string[], limit = 3) {
+export function AttributeChips({
+  values,
+  limit = 3,
+  chipMaxWidth = 140,
+  wrap = true,
+}: {
+  values?: string[];
+  limit?: number;
+  chipMaxWidth?: number;
+  wrap?: boolean;
+}) {
   if (!values?.length) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -57,13 +67,20 @@ function chips(values?: string[], limit = 3) {
   const shown = values.slice(0, limit);
   const rest = values.length - shown.length;
   return (
-    <Stack direction="row" flexWrap="wrap" useFlexGap gap={0.5}>
+    <Stack
+      direction="row"
+      flexWrap={wrap ? "wrap" : "nowrap"}
+      useFlexGap
+      gap={0.5}
+      sx={wrap ? undefined : { overflow: "hidden" }}
+    >
       {shown.map((value) => (
         <EllipsisChip
           key={value}
           size="small"
           label={value}
           variant="outlined"
+          maxWidth={chipMaxWidth}
         />
       ))}
       {rest > 0 ? <Chip size="small" label={`+${rest}`} variant="outlined" /> : null}
@@ -120,13 +137,27 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
             gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
           }}
         >
-          <FacetBlock label="Organism">{chips(hit.organism)}</FacetBlock>
-          <FacetBlock label="Top organ">{chips(hit.top_organ)}</FacetBlock>
-          <FacetBlock label="Tissue">{chips(hit.tissue)}</FacetBlock>
-          <FacetBlock label="Assay">{chips(hit.assay)}</FacetBlock>
-          <FacetBlock label="Disease">{chips(hit.disease)}</FacetBlock>
-          <FacetBlock label="Cell type">{chips(hit.cell_type)}</FacetBlock>
-          <FacetBlock label="Dev. stage">{chips(hit.development_stage)}</FacetBlock>
+          <FacetBlock label="Organism">
+            <AttributeChips values={hit.organism} />
+          </FacetBlock>
+          <FacetBlock label="Top organ">
+            <AttributeChips values={hit.top_organ} />
+          </FacetBlock>
+          <FacetBlock label="Tissue">
+            <AttributeChips values={hit.tissue} />
+          </FacetBlock>
+          <FacetBlock label="Assay">
+            <AttributeChips values={hit.assay} />
+          </FacetBlock>
+          <FacetBlock label="Disease">
+            <AttributeChips values={hit.disease} />
+          </FacetBlock>
+          <FacetBlock label="Cell type">
+            <AttributeChips values={hit.cell_type} />
+          </FacetBlock>
+          <FacetBlock label="Dev. stage">
+            <AttributeChips values={hit.development_stage} />
+          </FacetBlock>
         </Box>
       </CardContent>
     </Card>

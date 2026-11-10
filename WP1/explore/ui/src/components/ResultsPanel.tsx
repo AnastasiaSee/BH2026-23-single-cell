@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Box,
+  Chip,
   FormControl,
   InputLabel,
   Link,
@@ -19,7 +20,13 @@ import {
 import type { ExperimentRow, FacetSelection } from "../catalogQuery";
 import { EllipsisChip } from "./EllipsisChip";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
-import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
+import {
+  AttributeChips,
+  Hit,
+  formatSource,
+  hitTitle,
+  type ExperimentHit,
+} from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";
 import type { ResultsView } from "./ViewToggle";
 
@@ -106,15 +113,22 @@ type Props = {
   onApplyFacet: (field: string, value: string) => void;
 };
 
+function ChipCell({
+  maxWidth,
+  children,
+}: {
+  maxWidth: number;
+  children: ReactNode;
+}) {
+  return (
+    <TableCell sx={{ maxWidth, whiteSpace: "nowrap", verticalAlign: "middle", overflow: "hidden" }}>
+      {children}
+    </TableCell>
+  );
+}
+
 function HitRow({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
-  const source = hit.source || "—";
-  const organism = joinValues(hit.organism);
-  const topOrgan = joinValues(hit.top_organ);
-  const assay = joinValues(hit.assay);
-  const disease = joinValues(hit.disease);
-  const cellType = joinValues(hit.cell_type);
-  const developmentStage = joinValues(hit.development_stage);
   const cells = (hit.cell_count ?? 0).toLocaleString();
   const titleTooltip =
     hit.study_journal && hit.study_journal !== "unknown"
@@ -132,13 +146,33 @@ function HitRow({ hit }: { hit: ExperimentHit }) {
           title
         )}
       </TruncatedCell>
-      <TruncatedCell text={source} maxWidth={COL.source} />
-      <TruncatedCell text={organism} maxWidth={COL.organism} />
-      <TruncatedCell text={topOrgan} maxWidth={COL.top_organ} />
-      <TruncatedCell text={assay} maxWidth={COL.assay} />
-      <TruncatedCell text={disease} maxWidth={COL.disease} />
-      <TruncatedCell text={cellType} maxWidth={COL.cell_type} />
-      <TruncatedCell text={developmentStage} maxWidth={COL.development_stage} />
+      <ChipCell maxWidth={COL.source}>
+        {hit.source ? (
+          <Chip size="small" color="primary" label={formatSource(hit.source)} />
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            —
+          </Typography>
+        )}
+      </ChipCell>
+      <ChipCell maxWidth={COL.organism}>
+        <AttributeChips values={hit.organism} chipMaxWidth={100} wrap={false} />
+      </ChipCell>
+      <ChipCell maxWidth={COL.top_organ}>
+        <AttributeChips values={hit.top_organ} chipMaxWidth={100} wrap={false} />
+      </ChipCell>
+      <ChipCell maxWidth={COL.assay}>
+        <AttributeChips values={hit.assay} chipMaxWidth={110} wrap={false} />
+      </ChipCell>
+      <ChipCell maxWidth={COL.disease}>
+        <AttributeChips values={hit.disease} chipMaxWidth={100} wrap={false} />
+      </ChipCell>
+      <ChipCell maxWidth={COL.cell_type}>
+        <AttributeChips values={hit.cell_type} chipMaxWidth={110} wrap={false} />
+      </ChipCell>
+      <ChipCell maxWidth={COL.development_stage}>
+        <AttributeChips values={hit.development_stage} chipMaxWidth={100} wrap={false} />
+      </ChipCell>
       <TruncatedCell text={cells} maxWidth={COL.cells} align="right" />
     </TableRow>
   );
