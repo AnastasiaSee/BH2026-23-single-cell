@@ -38,13 +38,6 @@ export function formatSource(source?: string): string {
   return source || "unknown";
 }
 
-export function joinValues(values?: string[], limit = 3): string {
-  if (!values?.length) return "—";
-  const shown = values.slice(0, limit);
-  const rest = values.length - shown.length;
-  return rest > 0 ? `${shown.join(", ")} +${rest}` : shown.join(", ");
-}
-
 /** Attribute lists: at most 3 value chips, then a single +n chip. */
 export function AttributeChips({
   values,
