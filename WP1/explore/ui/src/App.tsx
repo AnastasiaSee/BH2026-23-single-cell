@@ -5,7 +5,6 @@ import {
   Button,
   CircularProgress,
   Container,
-  Drawer,
   IconButton,
   Pagination,
   Stack,
@@ -14,6 +13,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -231,89 +231,87 @@ export default function App() {
         </Container>
       </Box>
 
-      <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <Drawer
-          variant="persistent"
-          anchor="left"
-          open={filtersOpen}
+      <Box sx={{ display: "flex", flex: 1, minHeight: 0, alignItems: "stretch" }}>
+        <Box
+          component="aside"
+          aria-hidden={!filtersOpen}
           sx={{
             width: filtersOpen ? DRAWER_WIDTH : 0,
             flexShrink: 0,
+            overflow: "hidden",
+            borderRight: filtersOpen ? 1 : 0,
+            borderColor: "divider",
+            bgcolor: "rgba(255,255,255,0.88)",
             transition: (theme) =>
               theme.transitions.create("width", {
                 easing: theme.transitions.easing.sharp,
                 duration: theme.transitions.duration.enteringScreen,
               }),
-            "& .MuiDrawer-paper": {
-              position: "relative",
-              width: DRAWER_WIDTH,
-              boxSizing: "border-box",
-              border: 0,
-              borderRight: 1,
-              borderColor: "divider",
-              bgcolor: "rgba(255,255,255,0.88)",
-              height: "auto",
-              maxHeight: "none",
-              overflowY: "auto",
-            },
           }}
         >
-          <Toolbar
-            variant="dense"
+          <Box
             sx={{
-              px: 1.5,
-              minHeight: 48,
-              borderBottom: 1,
-              borderColor: "divider",
-              justifyContent: "space-between",
-              gap: 1,
+              width: DRAWER_WIDTH,
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100%",
             }}
           >
-            <Typography variant="subtitle2" fontWeight={700}>
-              Filters
-              {activeRefinements.length ? ` (${activeRefinements.length})` : ""}
-            </Typography>
-            <Button
-              size="small"
-              disabled={!activeRefinements.length && !query}
-              onClick={() => {
-                setQuery("");
-                setFacets({});
+            <Toolbar
+              variant="dense"
+              sx={{
+                px: 1,
+                minHeight: 48,
+                borderBottom: 1,
+                borderColor: "divider",
+                gap: 0.5,
               }}
             >
-              Clear
-            </Button>
-          </Toolbar>
-          <Box sx={{ p: 1.5 }}>
-            {FACET_PANELS.map((panel) => (
-              <FacetList
-                key={panel.field}
-                field={panel.field}
-                title={panel.title}
-                query={debouncedQuery}
-                facets={facets}
-                selected={facets[panel.field] ?? []}
-                searchable={panel.searchable}
-                open={panel.open}
-                limit={panel.limit}
-                onToggle={(value) => onToggleFacet(panel.field, value)}
-              />
-            ))}
+              <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1, pl: 0.5 }}>
+                Filters
+                {activeRefinements.length ? ` (${activeRefinements.length})` : ""}
+              </Typography>
+              <Button
+                size="small"
+                disabled={!activeRefinements.length && !query}
+                onClick={() => {
+                  setQuery("");
+                  setFacets({});
+                }}
+              >
+                Clear
+              </Button>
+              <Tooltip title="Collapse filters">
+                <IconButton
+                  size="small"
+                  aria-label="Collapse filters"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  <ChevronLeftIcon />
+                </IconButton>
+              </Tooltip>
+            </Toolbar>
+            <Box sx={{ p: 1.5, overflowY: "auto", flex: 1 }}>
+              {FACET_PANELS.map((panel) => (
+                <FacetList
+                  key={panel.field}
+                  field={panel.field}
+                  title={panel.title}
+                  query={debouncedQuery}
+                  facets={facets}
+                  selected={facets[panel.field] ?? []}
+                  searchable={panel.searchable}
+                  open={panel.open}
+                  limit={panel.limit}
+                  onToggle={(value) => onToggleFacet(panel.field, value)}
+                />
+              ))}
+            </Box>
           </Box>
-        </Drawer>
+        </Box>
 
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            minWidth: 0,
-            transition: (theme) =>
-              theme.transitions.create("margin", {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
-          }}
-        >
+        <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
           <Container maxWidth="lg" sx={{ py: 2.5, pb: 8 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -321,16 +319,20 @@ export default function App() {
               alignItems={{ sm: "center" }}
               mb={2}
             >
-              <Tooltip title={filtersOpen ? "Hide filters" : "Show filters"}>
-                <IconButton
-                  color={filtersOpen || activeRefinements.length ? "primary" : "default"}
-                  onClick={() => setFiltersOpen((open) => !open)}
-                  aria-label={filtersOpen ? "Hide filters" : "Show filters"}
-                  aria-pressed={filtersOpen}
+              {!filtersOpen ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FilterListIcon />}
+                  onClick={() => setFiltersOpen(true)}
+                  aria-expanded={false}
+                  color={activeRefinements.length ? "primary" : "inherit"}
+                  sx={{ flexShrink: 0 }}
                 >
-                  <FilterListIcon />
-                </IconButton>
-              </Tooltip>
+                  Filters
+                  {activeRefinements.length ? ` (${activeRefinements.length})` : ""}
+                </Button>
+              ) : null}
               <TextField
                 fullWidth
                 size="small"
