@@ -56,10 +56,20 @@ python scripts/make_term_remappings.py \
 3. A term that exists in composite is kept as is (no row). Stubs do not count: composite keeps an empty stanza (no name, no parents) for terms merged into another term, e.g. zebrafish `ZFA:0009248` merged into `CL:0000540` neuron; rule 5 remaps them.
 4. An obsolete term with a replacement (`replaced_by`) is remapped to it (e.g. `CL:0000089` to `CL:0000016`).
 5. A term that composite only knows as an xref of another term is remapped to that term (e.g. `HsapDv:0010000` to `UBERON:0000066`).
-6. Any other term is remapped to its closest (most specific) ancestor present in composite, using the ontologies given with `--extra-obo`. Without `--extra-obo`, these terms get the action `unresolved`.
+6. Any other term is remapped to its closest (most specific) ancestor present in composite and in the domain of the factor (see below), using the ontologies given with `--extra-obo`. Without `--extra-obo`, these terms get the action `unresolved`.
 
 Manual remappings go in [term_remappings_manual.tsv](term_remappings_manual.tsv) (columns `factor`, `source_term_id`, `action` [`remap` or `exclude`], `target_term_id`, `comment`), given with `--manual`. They replace whatever the rules above produce for that term; a term mapped to several targets has one row per target. It currently holds the obsolete CL terms without replacement, the zebrafish segmentation and hatching stages, and `UBERON:0000104` (life cycle, used as a stage).
 
 The output TSV has one row per remapping (columns: `factor`, `source_term_id`, `source_label`, `action`, `target_term_id`, `target_label`, `via_term_id`, `via_label`, `method`, `n_datasets`, `organisms`, `comment`). Rows with the action `unresolved` must be fixed in the manual file, not in the output TSV, which is overwritten each time the script runs.
 
 When reading the ontologies, ancestors follow `is_a` and `part_of` (the FlyBase relation "substage of", `FBdv:00018001`, counts as `part_of`). Taxon-conditional relations (`{gci_relation="in_taxon", ...}`, e.g. embryo stage `is_a` "Brugia life stage") are ignored.
+
+Because `part_of` crosses between kinds of entities, ancestors are restricted to the domain of each factor (this applies to rule 6 and to the ontology roll-up):
+
+| Factor | Domain |
+|---|---|
+| cell type | `CL:0000000` (cell) and its descendants |
+| tissue | `UBERON:0001062` (anatomical entity) and its descendants, except cell types (descendants of `CL:0000000`) |
+| developmental stage | `UBERON:0000105` (life cycle stage) and its descendants |
+
+Terms of BFO, NCBITaxon, COB and GO are never used. Without these restrictions, cell types would roll up into organs (e.g. "decidual natural killer cell, human" into decidua), and organs into taxa (Metazoa, through "multicellular organism"). A cell type annotated as tissue (e.g. a primary cell culture) stays a tissue column. It rolls up only through `part_of` into anatomy (e.g. tracheal epithelial cell to trachea), and it is remapped within the cell type domain if needed. The script warns about targets outside their domain, including xref and manual targets.

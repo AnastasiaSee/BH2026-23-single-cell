@@ -21,8 +21,16 @@ possible and records them as xrefs of taxon-neutral terms, so annotations are re
      release, ZFS stages, obsolete terms without replacement) -> action 'unresolved', because
      composite says nothing about such terms. Optionally, supplementary OBO files that still
      know these terms can be given with --extra-obo: the term is then remapped to its closest
-     (= most specific) ancestors, found by climbing composite + the extra files (is_a; also
-     part_of for developmental stages), that are in composite or xref of a composite term.
+     (= most specific) ancestors, found by climbing composite + the extra files (is_a +
+     part_of), that are in composite or xref of a composite term, and in the factor's domain.
+
+Factor domains (also used for the ontology roll-up): the subtree (is_a + part_of) of the factor
+root, without BFO, NCBITaxon, COB and GO terms. Cell types (the subtree of CL:0000000) are
+excluded from the tissue domain: composite makes CL:0000000 a subclass of 'anatomical
+structure', and cell types are part_of organs, so without this rule cell types would roll up
+into anatomy. A cell type annotated as tissue (e.g. a primary cell culture) is remapped within
+the cell type domain. Targets outside the domain (e.g. from an xref or a manual row) are
+reported as warnings.
 
 Manual remappings (--manual, optional): a TSV with the columns factor, source_term_id, action
 (remap/exclude), target_term_id, comment. Its rows replace the generated rows of the same
@@ -54,15 +62,18 @@ from pathlib import Path
 
 FACTORS = ("tissue", "cell_type", "development_stage")
 UNKNOWN_VALUES = {"unknown", "na"}
-UNKNOWN_ROOTS = {
+FACTOR_ROOTS = {
     "tissue": "UBERON:0001062",
     "cell_type": "CL:0000000",
     "development_stage": "UBERON:0000105",
 }
-# Relations followed to find ancestors. Stages form a partonomy (e.g. ZFS pharyngula:prim-5
-# part_of pharyngula); for anatomy and cell types part_of would cross into other kinds of
-# entities (a cell type part_of an organ), so only is_a is followed.
-CLIMB_RELS = {"development_stage": {"is_a", "part_of"}, "tissue": {"is_a"}, "cell_type": {"is_a"}}
+CELL_ROOT = FACTOR_ROOTS["cell_type"]
+# Relations followed to find ancestors. part_of crosses into other kinds of entities (a cell
+# type part_of an organ, an organ part_of a 'multicellular organism' that is a subclass of
+# NCBITaxon terms), which in_domain() filters out.
+ANCESTOR_RELS = {"is_a", "part_of"}
+# Terms never used as targets nor roll-up levels (upper-level, taxa, organism, GO)
+EXCLUDED_PREFIXES = ("BFO:", "NCBITaxon:", "COB:", "GO:")
 # OBO relationship types read as part_of. FBdv:00018001 'substage of' is the only link between
 # FlyBase stages and Uberon stages (e.g. 'day 1 of adulthood' substage of UBERON:0000066).
 PART_OF_RELS = {"part_of", "FBdv:00018001"}
@@ -112,10 +123,39 @@ def ancestors(term_id, graph, rels):
     return seen
 
 
-def closest(term_id, graph, rels, accept):
+def ancestor_finder(graph, rels=ANCESTOR_RELS):
+    """Memoised ancestors(term) over graph."""
+    memo = {}
+
+    def anc(term_id):
+        if term_id not in memo:
+            memo[term_id] = ancestors(term_id, graph, rels)
+        return memo[term_id]
+    return anc
+
+
+def term_kind(term_id, factor, anc):
+    """Domain a term of a factor belongs to: a cell type annotated as tissue is a cell type."""
+    if factor == "tissue" and (term_id == CELL_ROOT or CELL_ROOT in anc(term_id)):
+        return "cell_type"
+    return factor
+
+
+def in_domain(term_id, kind, anc):
+    """Whether term_id is in the domain of kind (a factor): in the subtree of its root, not an
+    excluded term, and for tissues not a cell type."""
+    if term_id.startswith(EXCLUDED_PREFIXES):
+        return False
+    lineage = anc(term_id) | {term_id}
+    if FACTOR_ROOTS[kind] not in lineage:
+        return False
+    return kind != "tissue" or CELL_ROOT not in lineage
+
+
+def closest(term_id, anc, accept):
     """Most specific ancestors satisfying accept() (not ancestors of another accepted one)."""
-    hits = {a for a in ancestors(term_id, graph, rels) if accept(a)}
-    return sorted(h for h in hits if not any(h in ancestors(o, graph, rels) for o in hits if o != h))
+    hits = {a for a in anc(term_id) if accept(a)}
+    return sorted(h for h in hits if not any(h in anc(o) for o in hits if o != h))
 
 
 def read_manual(path, in_composite):
@@ -171,6 +211,7 @@ def main():
     for path in args.extra_obo:
         for i, t in parse_obo(path).items():
             graph.setdefault(i, t)
+    anc = ancestor_finder(graph)
 
     def name_of(t):
         return (composite.get(t) or graph.get(t) or {}).get("name", "")
@@ -215,8 +256,7 @@ def main():
             for action, target, comment in manual[(factor, term)]:
                 add(factor, term, action, target, "", "manual", comment)
         elif term in UNKNOWN_VALUES:
-            if factor in UNKNOWN_ROOTS:
-                add(factor, term, "remap", UNKNOWN_ROOTS[factor], "", "unknown_to_ontology_root")
+            add(factor, term, "remap", FACTOR_ROOTS[factor], "", "unknown_to_ontology_root")
         elif term.startswith("CVCL_"):
             add(factor, term, "exclude", "", "", "cell_line_excluded")
         elif term in in_composite:
@@ -229,13 +269,22 @@ def main():
             for t in sorted(xref_of[term]):
                 add(factor, term, "remap", t, "", "xref_in_composite")
         else:
-            hits = closest(term, graph, CLIMB_RELS[factor],
-                           lambda a: not a.startswith("BFO:") and bool(targets_of(a)))
+            kind = term_kind(term, factor, anc)
+            hits = closest(term, anc,
+                           lambda a: any(in_domain(t, kind, anc) for t in targets_of(a)))
             if not hits:
                 add(factor, term, "unresolved", "", "", "no_ancestor_in_composite")
             for h in hits:
                 for t in targets_of(h):
-                    add(factor, term, "remap", t, h, "closest_ancestor_in_composite")
+                    if in_domain(t, kind, anc):
+                        add(factor, term, "remap", t, h, "closest_ancestor_in_composite")
+
+    off = [r for r in rows if r["action"] == "remap" and not in_domain(
+        r["target_term_id"], term_kind(r["source_term_id"], r["factor"], anc), anc)]
+    if off:
+        print(f"warning: {len(off)} targets outside the domain of their factor: "
+              + ", ".join(f"{r['factor']}:{r['source_term_id']}->{r['target_term_id']} ({r['method']})"
+                          for r in off))
 
     unused = sorted(set(manual) - set(usage))
     if unused:
