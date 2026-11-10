@@ -24,8 +24,8 @@ python scripts/merge_datasets.py \
   --input cxg=data/datasets_CxG.json \
   --input scfair=data/datasets_scFAIR.json \
   --input fenix=data/datasets_fenix.json \
-  --out data/datasets_merged.json \
-  --report data/merged_datasets.tsv
+  --out output/datasets_merged.json \
+  --report output/merged_datasets.tsv
 ```
 
 - `--input FORMAT=PATH` is repeated once per source. `FORMAT` selects how the file is read: `cxg` (CELLxGENE curation API export), `scfair` (scFAIR portal export) or `fenix` (Single Cell Expression Atlas export). To add a source, write a reader function in the script and register it in `READERS`.
@@ -73,3 +73,27 @@ Because `part_of` crosses between kinds of entities, ancestors are restricted to
 | developmental stage | `UBERON:0000105` (life cycle stage) and its descendants |
 
 Terms of BFO, NCBITaxon, COB and GO are never used. Without these restrictions, cell types would roll up into organs (e.g. "decidual natural killer cell, human" into decidua), and organs into taxa (Metazoa, through "multicellular organism"). A cell type annotated as tissue (e.g. a primary cell culture) stays a tissue column. It rolls up only through `part_of` into anatomy (e.g. tracheal epithelial cell to trachea), and it is remapped within the cell type domain if needed. The script warns about targets outside their domain, including xref and manual targets.
+
+## 4. Expand the terms to their ancestors
+
+[scripts/make_term_ancestors.py](scripts/make_term_ancestors.py) applies the remappings to the dataset annotations, then lists, for each factor, every annotated term and its ancestors in composite, following `is_a` and `part_of` within the domain of the factor (table above). The datasets JSON is not modified: the expansion is a separate file.
+
+```
+python scripts/make_term_ancestors.py \
+  --composite data/composite-metazoan.obo \
+  --datasets data/datasets_merged.json \
+  --remappings output/term_remappings.tsv \
+  --out output/term_ancestors.tsv
+```
+
+All options are mandatory. Use the same datasets file as in step 3. The TSV has one row per term and factor, for annotated terms and for their ancestors:
+
+| Column | Content |
+|---|---|
+| `factor` | `tissue`, `cell_type` or `development_stage` |
+| `term_id`, `term_label` | term of composite and its name |
+| `annotated` | `yes` if a dataset is annotated with the term (after remapping), `no` if it is only an ancestor |
+| `parent_ids` | closest ancestors within the domain (`;`-separated): the hierarchy, e.g. for drill-down |
+| `ancestor_ids` | all ancestors within the domain (`;`-separated), the term excluded: a dataset annotated with the term counts for all of them in the roll-up |
+
+The script warns about annotated terms that are not in composite (e.g. a remapping TSV generated from other datasets) or outside their factor's domain.
