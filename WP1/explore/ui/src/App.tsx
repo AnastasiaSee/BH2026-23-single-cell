@@ -5,12 +5,16 @@ import {
   Button,
   CircularProgress,
   Container,
+  Drawer,
+  IconButton,
   Pagination,
-  Paper,
   Stack,
   TextField,
+  Toolbar,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
 import { EllipsisChip } from "./components/EllipsisChip";
@@ -26,6 +30,7 @@ import {
 } from "./catalogQuery";
 
 const PAGE_SIZE = 24;
+const DRAWER_WIDTH = 300;
 
 const FACET_PANELS: {
   field: FacetField;
@@ -93,6 +98,7 @@ export default function App() {
   const [found, setFound] = useState(0);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,127 +211,193 @@ export default function App() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4, pb: 8 }}>
-      <Box mb={3}>
-        <Typography variant="h1" fontSize={{ xs: "2rem", md: "2.75rem" }} gutterBottom>
-          scFair datasets
-        </Typography>
-        <Typography color="text.secondary" maxWidth="42rem">
-          Browse and filter single-cell datasets by organism, tissue, assay, and more.
-        </Typography>
-      </Box>
-
+    <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Box
+        component="header"
         sx={{
-          display: "grid",
-          gap: 2.5,
-          gridTemplateColumns: { xs: "1fr", md: "280px minmax(0, 1fr)" },
-          alignItems: "start",
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: "rgba(255,255,255,0.72)",
+          backdropFilter: "blur(10px)",
         }}
       >
-        <Paper variant="outlined" sx={{ p: 1.5, position: { md: "sticky" }, top: { md: 16 } }}>
-          <Button
-            fullWidth
-            variant="outlined"
-            size="small"
-            disabled={!activeRefinements.length && !query}
-            onClick={() => {
-              setQuery("");
-              setFacets({});
+        <Container maxWidth="lg" sx={{ py: 2.5 }}>
+          <Typography variant="h1" fontSize={{ xs: "1.85rem", md: "2.5rem" }} gutterBottom>
+            scFair datasets
+          </Typography>
+          <Typography color="text.secondary" maxWidth="42rem">
+            Browse and filter single-cell datasets by organism, tissue, assay, and more.
+          </Typography>
+        </Container>
+      </Box>
+
+      <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+        <Drawer
+          variant="persistent"
+          anchor="left"
+          open={filtersOpen}
+          sx={{
+            width: filtersOpen ? DRAWER_WIDTH : 0,
+            flexShrink: 0,
+            transition: (theme) =>
+              theme.transitions.create("width", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            "& .MuiDrawer-paper": {
+              position: "relative",
+              width: DRAWER_WIDTH,
+              boxSizing: "border-box",
+              border: 0,
+              borderRight: 1,
+              borderColor: "divider",
+              bgcolor: "rgba(255,255,255,0.88)",
+              height: "auto",
+              maxHeight: "none",
+              overflowY: "auto",
+            },
+          }}
+        >
+          <Toolbar
+            variant="dense"
+            sx={{
+              px: 1.5,
+              minHeight: 48,
+              borderBottom: 1,
+              borderColor: "divider",
+              justifyContent: "space-between",
+              gap: 1,
             }}
-            sx={{ mb: 1 }}
           >
-            Clear filters
-          </Button>
-          {FACET_PANELS.map((panel) => (
-            <FacetList
-              key={panel.field}
-              field={panel.field}
-              title={panel.title}
+            <Typography variant="subtitle2" fontWeight={700}>
+              Filters
+              {activeRefinements.length ? ` (${activeRefinements.length})` : ""}
+            </Typography>
+            <Button
+              size="small"
+              disabled={!activeRefinements.length && !query}
+              onClick={() => {
+                setQuery("");
+                setFacets({});
+              }}
+            >
+              Clear
+            </Button>
+          </Toolbar>
+          <Box sx={{ p: 1.5 }}>
+            {FACET_PANELS.map((panel) => (
+              <FacetList
+                key={panel.field}
+                field={panel.field}
+                title={panel.title}
+                query={debouncedQuery}
+                facets={facets}
+                selected={facets[panel.field] ?? []}
+                searchable={panel.searchable}
+                open={panel.open}
+                limit={panel.limit}
+                onToggle={(value) => onToggleFacet(panel.field, value)}
+              />
+            ))}
+          </Box>
+        </Drawer>
+
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            minWidth: 0,
+            transition: (theme) =>
+              theme.transitions.create("margin", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+          }}
+        >
+          <Container maxWidth="lg" sx={{ py: 2.5, pb: 8 }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ sm: "center" }}
+              mb={2}
+            >
+              <Tooltip title={filtersOpen ? "Hide filters" : "Show filters"}>
+                <IconButton
+                  color={filtersOpen || activeRefinements.length ? "primary" : "default"}
+                  onClick={() => setFiltersOpen((open) => !open)}
+                  aria-label={filtersOpen ? "Hide filters" : "Show filters"}
+                  aria-pressed={filtersOpen}
+                >
+                  <FilterListIcon />
+                </IconButton>
+              </Tooltip>
+              <TextField
+                fullWidth
+                size="small"
+                type="search"
+                placeholder="Search titles, tissues, assays…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <ViewToggle value={view} onChange={setView} />
+            </Stack>
+
+            {activeRefinements.length ? (
+              <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} mb={2}>
+                {activeRefinements.map(({ field, value }) => (
+                  <EllipsisChip
+                    key={`${field}:${value}`}
+                    label={`${field}: ${value}`}
+                    maxWidth={220}
+                    onDelete={() => onToggleFacet(field as FacetField, value)}
+                  />
+                ))}
+              </Stack>
+            ) : null}
+
+            <Typography variant="body2" color="text.secondary" mb={1.5}>
+              {view === "pivot"
+                ? "Pivot view"
+                : searching
+                  ? "Searching…"
+                  : `${found.toLocaleString()} datasets`}
+            </Typography>
+
+            {searchError ? (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {searchError}
+              </Alert>
+            ) : null}
+
+            <ResultsPanel
+              view={view}
+              rows={rows}
               query={debouncedQuery}
               facets={facets}
-              selected={facets[panel.field] ?? []}
-              searchable={panel.searchable}
-              open={panel.open}
-              limit={panel.limit}
-              onToggle={(value) => onToggleFacet(panel.field, value)}
+              onOpenHits={() => setView("table")}
+              onApplyFacet={onApplyFacet}
             />
-          ))}
-        </Paper>
 
-        <Box>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            alignItems={{ sm: "center" }}
-            mb={2}
-          >
-            <TextField
-              fullWidth
-              size="small"
-              type="search"
-              placeholder="Search titles, tissues, assays…"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <ViewToggle value={view} onChange={setView} />
-          </Stack>
-
-          {activeRefinements.length ? (
-            <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} mb={2}>
-              {activeRefinements.map(({ field, value }) => (
-                <EllipsisChip
-                  key={`${field}:${value}`}
-                  label={`${field}: ${value}`}
-                  maxWidth={220}
-                  onDelete={() => onToggleFacet(field as FacetField, value)}
+            {view !== "pivot" && found > PAGE_SIZE ? (
+              <Stack alignItems="center" mt={3}>
+                <Pagination
+                  color="primary"
+                  page={page + 1}
+                  count={pageCount}
+                  onChange={(_, next) => setPage(next - 1)}
                 />
-              ))}
-            </Stack>
-          ) : null}
-
-          <Typography variant="body2" color="text.secondary" mb={1.5}>
-            {view === "pivot"
-              ? "Pivot view"
-              : searching
-                ? "Searching…"
-                : `${found.toLocaleString()} datasets`}
-          </Typography>
-
-          {searchError ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {searchError}
-            </Alert>
-          ) : null}
-
-          <ResultsPanel
-            view={view}
-            rows={rows}
-            query={debouncedQuery}
-            facets={facets}
-            onOpenHits={() => setView("table")}
-            onApplyFacet={onApplyFacet}
-          />
-
-          {view !== "pivot" && found > PAGE_SIZE ? (
-            <Stack alignItems="center" mt={3}>
-              <Pagination
-                color="primary"
-                page={page + 1}
-                count={pageCount}
-                onChange={(_, next) => setPage(next - 1)}
-              />
-            </Stack>
-          ) : null}
+              </Stack>
+            ) : null}
+          </Container>
         </Box>
       </Box>
-    </Container>
+    </Box>
   );
 }
