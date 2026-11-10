@@ -23,6 +23,7 @@ import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
 import {
   AttributeChips,
   Hit,
+  formatCompactCount,
   formatSource,
   hitTitle,
   type ExperimentHit,
@@ -129,7 +130,9 @@ function ChipCell({
 
 function HitRow({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
-  const cells = (hit.cell_count ?? 0).toLocaleString();
+  const cellCount = hit.cell_count ?? 0;
+  const cellsLabel = formatCompactCount(cellCount);
+  const cellsTooltip = cellCount.toLocaleString();
   const titleTooltip =
     hit.study_journal && hit.study_journal !== "unknown"
       ? `${title} · ${hit.study_journal}`
@@ -173,7 +176,9 @@ function HitRow({ hit }: { hit: ExperimentHit }) {
       <ChipCell maxWidth={COL.development_stage}>
         <AttributeChips values={hit.development_stage} chipMaxWidth={100} wrap={false} />
       </ChipCell>
-      <TruncatedCell text={cells} maxWidth={COL.cells} align="right" />
+      <TruncatedCell text={cellsTooltip} maxWidth={COL.cells} align="right">
+        {cellsLabel}
+      </TruncatedCell>
     </TableRow>
   );
 }

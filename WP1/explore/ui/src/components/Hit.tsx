@@ -6,6 +6,7 @@ import {
   Chip,
   Link,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { EllipsisChip } from "./EllipsisChip";
@@ -36,6 +37,20 @@ export function hitTitle(hit: ExperimentHit): string {
 export function formatSource(source?: string): string {
   if (source === "scfair") return "scFair";
   return source || "unknown";
+}
+
+/** Compact counts for chips/table: 450, 45k, 34M. */
+export function formatCompactCount(value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  const abs = Math.abs(n);
+  const trim = (v: number) => {
+    const rounded = Math.round(v * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
+  if (abs < 1000) return String(Math.round(n));
+  if (abs < 1_000_000) return `${trim(n / 1000)}k`;
+  if (abs < 1_000_000_000) return `${trim(n / 1_000_000)}M`;
+  return `${trim(n / 1_000_000_000)}B`;
 }
 
 /** Attribute lists: at most 3 value chips, then a single +n chip. */
@@ -110,9 +125,13 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
           {hit.source ? (
             <Chip size="small" color="primary" label={formatSource(hit.source)} />
           ) : null}
-          <Chip size="small" label={`${(hit.cell_count ?? 0).toLocaleString()} cells`} />
+          <Tooltip title={(hit.cell_count ?? 0).toLocaleString()} enterDelay={400}>
+            <Chip size="small" label={`${formatCompactCount(hit.cell_count ?? 0)} cells`} />
+          </Tooltip>
           {hit.feature_count ? (
-            <Chip size="small" label={`${hit.feature_count.toLocaleString()} features`} />
+            <Tooltip title={hit.feature_count.toLocaleString()} enterDelay={400}>
+              <Chip size="small" label={`${formatCompactCount(hit.feature_count)} features`} />
+            </Tooltip>
           ) : null}
           {hit.study_journal && hit.study_journal !== "unknown" ? (
             <EllipsisChip
