@@ -3,50 +3,79 @@
 Reference ontology: composite-metazoan Uberon. It removes taxon-specific terms wherever
 possible and records them as xrefs of taxon-neutral terms, so annotations are remapped as:
 
-  1. 'unknown'/'na'            -> root of the ontology for the factor (cell type: CL:0000000,
-                                  developmental stage: UBERON:0000105)
+  1. 'unknown'/'na' (an empty annotation counts as 'na')
+                               -> root of the ontology for the factor (tissue: UBERON:0001062,
+                                  cell type: CL:0000000, developmental stage: UBERON:0000105)
   2. cell line (CVCL_*)        -> excluded
-  3. term in composite         -> kept as is (no row), even if another term xrefs it
-  4. xref of composite term(s) -> remapped to the term(s) bearing the xref (e.g. HsapDv:0010000
+  3. term in composite         -> kept as is (no row), even if another term xrefs it. Stub
+                                  terms (an id without name nor parents, left by composite for
+                                  terms merged into another one, e.g. ZFA:0009248) do not count.
+  4. obsolete term with replaced_by
+                               -> remapped to the replacement term(s) (e.g. CL:0000089 ->
+                                  CL:0000016). Done before rule 5 because obsolete CL ids are
+                                  often xrefs of taxon-specific terms (e.g. CL:0002371 'somatic
+                                  cell' is an xref of 'somatic cell (zebrafish)').
+  5. xref of composite term(s) -> remapped to the term(s) bearing the xref (e.g. HsapDv:0010000
                                   -> UBERON:0000066)
-  5. otherwise (not in composite, not an xref: e.g. 'human' CL terms, CL terms newer than the
-     release, ZFS stages) -> action 'unresolved', to be filled in by hand in the TSV, because
+  6. otherwise (not in composite, not an xref: e.g. 'human' CL terms, CL terms newer than the
+     release, ZFS stages, obsolete terms without replacement) -> action 'unresolved', because
      composite says nothing about such terms. Optionally, supplementary OBO files that still
      know these terms can be given with --extra-obo: the term is then remapped to its closest
      (= most specific) ancestors, found by climbing composite + the extra files (is_a; also
      part_of for developmental stages), that are in composite or xref of a composite term.
 
+Manual remappings (--manual, optional): a TSV with the columns factor, source_term_id, action
+(remap/exclude), target_term_id, comment. Its rows replace the generated rows of the same
+(factor, source_term_id); a term mapped to several targets has one row per target. Use it for
+the terms that rules 1-6 leave unresolved or map badly: unlike the output TSV, it is not
+overwritten when the script is re-run. Targets must be (non-obsolete) terms of composite.
+
+OBO parsing: parents are is_a and part_of relations (FlyBase 'substage of', FBdv:00018001,
+counts as part_of). Taxon-conditional relations (General Class Inclusion axioms, e.g.
+'is_a: WBls:0000091 {gci_relation="in_taxon", ...}') are ignored: they only hold in one taxon.
+
 Only composite-metazoan.obo is required; its path must be given with --composite (nothing is
 downloaded; http://purl.obolibrary.org/obo/uberon/composite-metazoan.obo).
 Works for any species/dataset: the input JSON only needs the scFAIR fields `organism`,
 `tissue`, `cell_type`, `development_stage` (lists of {label, ontology_term_id}) and `dataset_id`.
-The TSV can be edited by hand afterwards; re-running overwrites it.
+A dataset with several organisms contributes to the `organisms` column of all its terms.
+The output TSV can be edited by hand afterwards, but re-running overwrites it.
 
 Usage: python WP1/scripts/make_term_remappings.py --composite composite-metazoan.obo
-           --datasets F.json --out F.tsv [--extra-obo FILE [FILE ...]]
+           --datasets F.json --out F.tsv [--extra-obo FILE [FILE ...]] [--manual MANUAL.tsv]
 """
 
 import argparse
 import collections
 import csv
 import json
+import sys
 from pathlib import Path
 
 FACTORS = ("tissue", "cell_type", "development_stage")
 UNKNOWN_VALUES = {"unknown", "na"}
-UNKNOWN_ROOTS = {"cell_type": "CL:0000000", "development_stage": "UBERON:0000105"}
+UNKNOWN_ROOTS = {
+    "tissue": "UBERON:0001062",
+    "cell_type": "CL:0000000",
+    "development_stage": "UBERON:0000105",
+}
 # Relations followed to find ancestors. Stages form a partonomy (e.g. ZFS pharyngula:prim-5
 # part_of pharyngula); for anatomy and cell types part_of would cross into other kinds of
 # entities (a cell type part_of an organ), so only is_a is followed.
 CLIMB_RELS = {"development_stage": {"is_a", "part_of"}, "tissue": {"is_a"}, "cell_type": {"is_a"}}
+# OBO relationship types read as part_of. FBdv:00018001 'substage of' is the only link between
+# FlyBase stages and Uberon stages (e.g. 'day 1 of adulthood' substage of UBERON:0000066).
+PART_OF_RELS = {"part_of", "FBdv:00018001"}
+MANUAL_FIELDS = ("factor", "source_term_id", "action", "target_term_id", "comment")
 
 
 def parse_obo(path):
+    """Return {id: {id, name, parents [(rel, id)], xrefs, obsolete, replaced_by}} for [Term]s."""
     terms, cur = {}, None
     for line in path.open(encoding="utf-8"):
         line = line.rstrip("\n")
         if line == "[Term]":
-            cur = {"parents": [], "xrefs": [], "obsolete": False, "name": ""}
+            cur = {"parents": [], "xrefs": [], "obsolete": False, "name": "", "replaced_by": []}
         elif line.startswith("["):
             cur = None
         elif cur is None:
@@ -58,12 +87,18 @@ def parse_obo(path):
             cur["name"] = line[6:]
         elif line.startswith("is_obsolete: true"):
             cur["obsolete"] = True
-        elif line.startswith("is_a: "):
-            cur["parents"].append(("is_a", line[6:].split()[0]))
-        elif line.startswith("relationship: part_of "):
-            cur["parents"].append(("part_of", line[22:].split()[0]))
+        elif line.startswith("replaced_by: "):
+            cur["replaced_by"].append(line[13:].split()[0])
         elif line.startswith("xref: "):
             cur["xrefs"].append(line[6:].split()[0])
+        elif "gci_relation" in line:
+            continue  # taxon-conditional relation (GCI axiom)
+        elif line.startswith("is_a: "):
+            cur["parents"].append(("is_a", line[6:].split()[0]))
+        elif line.startswith("relationship: "):
+            rel, target = line[14:].split()[:2]
+            if rel in PART_OF_RELS:
+                cur["parents"].append(("part_of", target))
     return terms
 
 
@@ -83,6 +118,29 @@ def closest(term_id, graph, rels, accept):
     return sorted(h for h in hits if not any(h in ancestors(o, graph, rels) for o in hits if o != h))
 
 
+def read_manual(path, in_composite):
+    """Manual remappings: {(factor, source_term_id): [(action, target, comment), ...]}."""
+    manual = collections.defaultdict(list)
+    with path.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        missing = set(MANUAL_FIELDS) - set(reader.fieldnames or [])
+        if missing:
+            sys.exit(f"{path}: missing columns {sorted(missing)}")
+        for n, r in enumerate(reader, start=2):
+            r = {k: (v or "").strip() for k, v in r.items()}
+            if r["factor"] not in FACTORS:
+                sys.exit(f"{path}:{n}: factor must be one of {FACTORS}: {r['factor']!r}")
+            if r["action"] == "remap" and r["target_term_id"] not in in_composite:
+                sys.exit(f"{path}:{n}: target {r['target_term_id']!r} is not a term of composite")
+            if r["action"] == "exclude" and r["target_term_id"]:
+                sys.exit(f"{path}:{n}: action 'exclude' takes no target")
+            if r["action"] not in ("remap", "exclude"):
+                sys.exit(f"{path}:{n}: action must be 'remap' or 'exclude': {r['action']!r}")
+            manual[(r["factor"], r["source_term_id"])].append(
+                (r["action"], r["target_term_id"], r["comment"]))
+    return manual
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--composite", type=Path, required=True,
@@ -92,15 +150,20 @@ def main():
     ap.add_argument("--out", type=Path, required=True, help="remapping TSV to write")
     ap.add_argument("--extra-obo", type=Path, nargs="*", default=[],
                     help="supplementary OBO files used only to climb from terms absent from composite")
+    ap.add_argument("--manual", type=Path,
+                    help="TSV of manual remappings, overriding the generated rows of their terms")
     args = ap.parse_args()
 
     composite = parse_obo(args.composite)
-    in_composite = {i for i, t in composite.items() if not t["obsolete"]}
+    # Stubs (id only) are terms merged into another one: their id is an xref of that term.
+    in_composite = {i for i, t in composite.items()
+                    if not t["obsolete"] and (t["name"] or t["parents"])}
     xref_of = collections.defaultdict(set)  # xref id -> composite terms bearing it
     for t in composite.values():
-        if not t["obsolete"]:
+        if t["id"] in in_composite:
             for x in t["xrefs"]:
                 xref_of[x].add(t["id"])
+    manual = read_manual(args.manual, in_composite) if args.manual else {}
 
     # Parent graph used to climb from terms absent from composite: composite first, then the
     # optional extra files.
@@ -120,15 +183,16 @@ def main():
     labels = {}
     for d in json.load(args.datasets.open()):
         for factor in FACTORS:
-            for o in d[factor]:
+            # An empty annotation is treated as NA (some resources use empty lists)
+            for o in d[factor] or [{"ontology_term_id": "na", "label": "na"}]:
                 u = usage[(factor, o["ontology_term_id"])]
                 u["datasets"].add(d["dataset_id"])
-                u["organisms"].add(d["organism"][0]["label"])
+                u["organisms"].update(org["label"] for org in d["organism"])
                 labels[o["ontology_term_id"]] = o["label"]
 
     rows = []
 
-    def add(factor, term, action, target, via, method):
+    def add(factor, term, action, target, via, method, comment=""):
         u = usage[(factor, term)]
         rows.append({
             "factor": factor,
@@ -142,16 +206,25 @@ def main():
             "method": method,
             "n_datasets": len(u["datasets"]),
             "organisms": ";".join(sorted(u["organisms"])),
+            "comment": comment,
         })
 
     for factor, term in sorted(usage):
-        if term in UNKNOWN_VALUES:
+        replaced_by = [r for r in graph.get(term, {}).get("replaced_by", []) if targets_of(r)]
+        if (factor, term) in manual:
+            for action, target, comment in manual[(factor, term)]:
+                add(factor, term, action, target, "", "manual", comment)
+        elif term in UNKNOWN_VALUES:
             if factor in UNKNOWN_ROOTS:
                 add(factor, term, "remap", UNKNOWN_ROOTS[factor], "", "unknown_to_ontology_root")
         elif term.startswith("CVCL_"):
             add(factor, term, "exclude", "", "", "cell_line_excluded")
         elif term in in_composite:
             continue
+        elif graph.get(term, {}).get("obsolete") and replaced_by:
+            for r in replaced_by:
+                for t in targets_of(r):
+                    add(factor, term, "remap", t, r if r != t else "", "obsolete_replaced_by")
         elif term in xref_of:
             for t in sorted(xref_of[term]):
                 add(factor, term, "remap", t, "", "xref_in_composite")
@@ -163,6 +236,11 @@ def main():
             for h in hits:
                 for t in targets_of(h):
                     add(factor, term, "remap", t, h, "closest_ancestor_in_composite")
+
+    unused = sorted(set(manual) - set(usage))
+    if unused:
+        print(f"warning: {len(unused)} manual remappings for terms used by no dataset: "
+              + ", ".join(f"{f}:{t}" for f, t in unused))
 
     fields = list(rows[0])
     with args.out.open("w", newline="", encoding="utf-8") as f:
