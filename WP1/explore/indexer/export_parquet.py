@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Export flattened experiment catalogs to Parquet for DuckDB-WASM.
 
-Built-in sources:
+Built-in source:
   - Fenix (`--fenix-json`)
-  - Single Cell Portal (`--scp-json`)
 
 Additional partner JSON files (new-source ingest schema):
 
@@ -26,13 +25,10 @@ import pyarrow.parquet as pq
 
 from catalog import (
     DEFAULT_FENIX_JSON,
-    DEFAULT_SCP_JSON,
     flatten_fenix,
     flatten_partner,
-    flatten_scp,
     load_fenix,
     load_partner,
-    load_scp,
 )
 from ols_cell_type import (
     load_cache as load_cl_cache,
@@ -92,15 +88,12 @@ def parse_source_json(value: str) -> tuple[str, Path]:
 def collect_docs(
     *,
     fenix_json: Path,
-    scp_json: Path,
     skip_fenix: bool,
-    skip_scp: bool,
     extras: list[tuple[str, Path]],
     skip_ols: bool,
     refresh_ols: bool,
 ) -> list[dict[str, Any]]:
     fenix_records: list[dict[str, Any]] = []
-    scp_records: list[dict[str, Any]] = []
     partner_records: list[tuple[str, list[dict[str, Any]]]] = []
     ols_cache: dict[str, Any] | None = None
     cl_cache: dict[str, Any] | None = None
@@ -110,17 +103,12 @@ def collect_docs(
             raise FileNotFoundError(f"Missing Fenix JSON: {fenix_json}")
         fenix_records = load_fenix(fenix_json)
 
-    if not skip_scp:
-        if not scp_json.is_file():
-            raise FileNotFoundError(f"Missing SCP JSON: {scp_json}")
-        scp_records = load_scp(scp_json)
-
     for source, path in extras:
         if not path.is_file():
             raise FileNotFoundError(f"Missing partner JSON for {source}: {path}")
         partner_records.append((source, load_partner(path)))
 
-    if not skip_ols and (fenix_records or scp_records or partner_records):
+    if not skip_ols and (fenix_records or partner_records):
         print("Warming OLS tissue hierarchy cache…")
         curies: list[str] = []
         organ_labels: list[str] = []
@@ -136,11 +124,6 @@ def collect_docs(
             for cell in exp.get("cell_type") or []:
                 if isinstance(cell, dict) and cell.get("ontology_term_id"):
                     cl_curies.append(str(cell["ontology_term_id"]))
-
-        for study in scp_records:
-            meta = study.get("metadata") if isinstance(study, dict) else {}
-            for organ in (meta or {}).get("organ") or []:
-                organ_labels.append(str(organ))
 
         for _source, records in partner_records:
             for exp in records:
@@ -184,14 +167,6 @@ def collect_docs(
         ]
         docs.extend(fenix_docs)
         print(f"Prepared {len(fenix_docs)} Fenix docs from {fenix_json}")
-
-    if scp_records:
-        scp_docs = [
-            rename_doc(flatten_scp(record, ols_cache=ols_cache, cl_cache=cl_cache))
-            for record in scp_records
-        ]
-        docs.extend(scp_docs)
-        print(f"Prepared {len(scp_docs)} SCP docs from {scp_json}")
 
     for source, records in partner_records:
         partner_docs = [
@@ -240,10 +215,8 @@ def docs_to_table(docs: list[dict[str, Any]]) -> pa.Table:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fenix-json", type=Path, default=DEFAULT_FENIX_JSON)
-    parser.add_argument("--scp-json", type=Path, default=DEFAULT_SCP_JSON)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--skip-fenix", action="store_true")
-    parser.add_argument("--skip-scp", action="store_true")
     parser.add_argument(
         "--json",
         dest="extra_json",
@@ -268,9 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         docs = collect_docs(
             fenix_json=args.fenix_json,
-            scp_json=args.scp_json,
             skip_fenix=args.skip_fenix,
-            skip_scp=args.skip_scp,
             extras=args.extra_json,
             skip_ols=args.skip_ols,
             refresh_ols=args.refresh_ols,

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Flatten experiment catalogs into explore documents (Parquet export).
 
-Every document includes a faceted `source` field (e.g. fenix, single_cell_portal,
-or a partner source name).
+Every document includes a faceted `source` field (e.g. fenix or a partner
+source name passed to export_parquet.py --json SOURCE=PATH).
 """
 
 from __future__ import annotations
@@ -26,11 +26,8 @@ from ols_tissue import (
 ROOT = Path(__file__).resolve().parents[1]
 WP1 = ROOT.parent
 DEFAULT_FENIX_JSON = WP1 / "fenix" / "experiments.json"
-DEFAULT_SCP_JSON = WP1 / "single_cell_portal" / "studies.json"
 
 SOURCE_FENIX = "fenix"
-SOURCE_SCP = "single_cell_portal"
-SCP_ORIGIN = "https://singlecell.broadinstitute.org"
 
 
 # Acronyms / tokens kept upper (or special-cased) inside Title Case facets.
@@ -227,23 +224,6 @@ def fenix_tissue_paths(
     return paths
 
 
-def scp_tissue_paths(
-    organs: list[str], ols_cache: dict[str, Any] | None
-) -> list[list[str]]:
-    """Best-effort OLS paths for SCP organ labels."""
-    paths: list[list[str]] = []
-    if ols_cache is None:
-        return [[o] for o in organs if o]
-    for organ in organs:
-        path = resolve_path(
-            label=organ, cache=ols_cache, refresh=False, sleep_s=0
-        )
-        if not path:
-            path = [organ]
-        paths.append(path)
-    return paths
-
-
 def fenix_cell_type_paths(
     cell_types: list[Any], cl_cache: dict[str, Any] | None
 ) -> list[list[str]]:
@@ -360,79 +340,6 @@ def flatten_fenix(
     return doc
 
 
-def flatten_scp(
-    raw: dict[str, Any],
-    *,
-    ols_cache: dict[str, Any] | None = None,
-    cl_cache: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    meta = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
-    accession = str(raw.get("accession") or "").strip()
-    if not accession:
-        raise ValueError("SCP study missing accession")
-
-    organism = labels(meta.get("species"))
-    organs = labels(meta.get("organ"))
-    assay = labels(meta.get("library_preparation_protocol"))
-    disease = labels(meta.get("disease"))
-    sex = labels(meta.get("sex"))
-    title = str(raw.get("name") or accession)
-    study_url = str(raw.get("study_url") or "")
-    explorer = (
-        f"{SCP_ORIGIN}{study_url}"
-        if study_url.startswith("/")
-        else study_url or f"{SCP_ORIGIN}/single_cell/study/{accession}"
-    )
-    hierarchy = paths_to_hierarchy_fields(
-        scp_tissue_paths(organs, ols_cache),
-        canonicalize=canonicalize_facet_value,
-    )
-
-    search_bits = [
-        SOURCE_SCP,
-        "Single Cell Portal",
-        title,
-        accession,
-        raw.get("description"),
-        raw.get("study_source"),
-        *organism,
-        *organs,
-        *assay,
-        *disease,
-        *sex,
-    ]
-
-    doc = {
-        "id": f"scp::{accession}",
-        "title": title,
-        "source": SOURCE_SCP,
-        "experiment_id": accession,
-        "study_id": accession,
-        "organism": organism,
-        "top_organ": organs,  # SCP exposes organ only; reuse for top_organ facet
-        "tissue": organs,
-        "tissue_type": [],
-        "assay": assay,
-        "disease": disease,
-        "suspension_type": [],
-        "sex": sex,
-        "development_stage": [],
-        "self_reported_ethnicity": [],
-        "study_journal": "unknown",
-        "cell_type": [],
-        "cell_count": int(raw.get("cell_count") or 0),
-        "feature_count": int(raw.get("gene_count") or 0),
-        "published_at": 0,
-        "explorer_url": explorer,
-        "h5ad_url": "",
-        "search_blob": " | ".join(str(bit) for bit in search_bits if bit),
-    }
-    doc.update(hierarchy or empty_tissue_hierarchy())
-    # SCP search API does not expose cell_type — leave hierarchy empty.
-    _ = cl_cache
-    doc.update(empty_cell_type_hierarchy())
-    return doc
-
 def load_fenix(path: Path) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, dict) and "data" in payload:
@@ -443,19 +350,6 @@ def load_fenix(path: Path) -> list[dict[str, Any]]:
         raise ValueError(f"Unexpected Fenix JSON shape in {path}")
     if not isinstance(records, list):
         raise ValueError("Fenix `data` must be a list")
-    return records
-
-
-def load_scp(path: Path) -> list[dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(payload, dict) and "studies" in payload:
-        records = payload["studies"]
-    elif isinstance(payload, list):
-        records = payload
-    else:
-        raise ValueError(f"Unexpected SCP JSON shape in {path}")
-    if not isinstance(records, list):
-        raise ValueError("SCP `studies` must be a list")
     return records
 
 

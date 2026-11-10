@@ -6,14 +6,8 @@ CELLxGENE / Fenix experiment metadata snapshot, download script, facet summary, 
 
 → [`fenix/`](fenix/)
 
-## Single Cell Portal study catalog
-
-Broad Institute SCP search API snapshot (`source=single_cell_portal` in the explore index):
-
-→ [`single_cell_portal/`](single_cell_portal/)
-
 ## Explore stack (Parquet + DuckDB-WASM)
 
-Client-side faceted explore over Fenix + SCP (`source` facet): export JSON catalogs to Parquet, query in the browser with DuckDB-WASM.
+Client-side faceted explore over Fenix (`source` facet), with optional partner JSON via `--json SOURCE=PATH`:
 
 → [`explore/`](explore/)

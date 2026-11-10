@@ -22,7 +22,6 @@ export function hitTitle(hit: ExperimentHit): string {
 }
 
 export function formatSource(source?: string): string {
-  if (source === "single_cell_portal") return "Single Cell Portal";
   if (source === "fenix") return "Fenix";
   return source || "unknown";
 }

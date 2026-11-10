@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-"""Warm / refresh the OLS tissue hierarchy cache used by the indexer.
+"""Warm / refresh the OLS tissue hierarchy cache used by the exporter.
 
 Examples:
 
     # Resolve all Fenix UBERON tissue IDs into ols_cache/uberon_paths.json
     python enrich_tissue_hierarchy.py
 
-    # Also resolve SCP organ labels (best-effort exact match)
-    python enrich_tissue_hierarchy.py --scp
-
     # Force re-fetch from OLS (ignore cached paths)
-    python enrich_tissue_hierarchy.py --refresh --scp
+    python enrich_tissue_hierarchy.py --refresh
 
 Then re-export Parquet:
 
@@ -27,7 +24,6 @@ from pathlib import Path
 from ols_tissue import (
     CACHE_FILE,
     warm_cache_for_curies,
-    warm_cache_for_labels,
 )
 
 WP1 = Path(__file__).resolve().parents[2]
@@ -47,33 +43,12 @@ def fenix_tissue_curies(path: Path) -> list[str]:
     return curies
 
 
-def scp_organ_labels(path: Path) -> list[str]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    studies = payload.get("studies") if isinstance(payload, dict) else payload
-    labels: list[str] = []
-    for study in studies or []:
-        meta = study.get("metadata") if isinstance(study, dict) else {}
-        for organ in (meta or {}).get("organ") or []:
-            labels.append(str(organ))
-    return labels
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--fenix-json",
         type=Path,
         default=WP1 / "fenix" / "experiments.json",
-    )
-    parser.add_argument(
-        "--scp-json",
-        type=Path,
-        default=WP1 / "single_cell_portal" / "studies.json",
-    )
-    parser.add_argument(
-        "--scp",
-        action="store_true",
-        help="Also resolve SCP organ labels via OLS search (best-effort)",
     )
     parser.add_argument(
         "--refresh",
@@ -90,14 +65,6 @@ def main(argv: list[str] | None = None) -> int:
     curies = fenix_tissue_curies(args.fenix_json)
     print(f"Warming OLS cache for {len(set(curies))} unique Fenix tissue curies → {CACHE_FILE}")
     warm_cache_for_curies(curies, refresh=args.refresh, sleep_s=args.sleep)
-
-    if args.scp:
-        if not args.scp_json.is_file():
-            print(f"Missing SCP JSON: {args.scp_json}", file=sys.stderr)
-            return 1
-        labels = scp_organ_labels(args.scp_json)
-        print(f"Warming OLS cache for {len(set(labels))} unique SCP organ labels")
-        warm_cache_for_labels(labels, refresh=args.refresh, sleep_s=args.sleep)
 
     print(f"Done. Cache at {CACHE_FILE}")
     print("Re-export with: python export_parquet.py")
