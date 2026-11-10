@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import {
+  Button,
   Checkbox,
   FormControl,
   InputLabel,
   Link,
+  ListItemIcon,
   ListItemText,
+  Menu,
   MenuItem,
-  OutlinedInput,
   Select,
-  type SelectChangeEvent,
   Stack,
   Table,
   TableBody,
@@ -20,6 +21,7 @@ import {
   Typography,
   Chip,
 } from "@mui/material";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import type { ExperimentRow, FacetSelection } from "../catalogQuery";
 import { EllipsisChip } from "./EllipsisChip";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
@@ -301,6 +303,7 @@ export function ResultsPanel({
   const [groupBy, setGroupBy] = useState<GroupByField>(() => loadStoredGroupBy());
   const [columns, setColumns] = useState<TableColumnId[]>(() => loadStoredColumns());
   const [activeChip, setActiveChip] = useState<string | null>(null);
+  const [columnsMenuAnchor, setColumnsMenuAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -349,11 +352,19 @@ export function ResultsPanel({
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const onColumnsChange = (event: SelectChangeEvent<TableColumnId[]>) => {
-    const value = event.target.value;
-    const next = (typeof value === "string" ? value.split(",") : value) as TableColumnId[];
-    const withTitle = next.includes("title") ? next : (["title", ...next] as TableColumnId[]);
-    setColumns(withTitle);
+  const toggleColumn = (id: TableColumnId) => {
+    if (id === "title") return;
+    setColumns((prev) =>
+      prev.includes(id) ? prev.filter((col) => col !== id) : [...prev, id]
+    );
+  };
+
+  const openColumnsMenu = (event: MouseEvent<HTMLElement>) => {
+    setColumnsMenuAnchor(event.currentTarget);
+  };
+
+  const closeColumnsMenu = () => {
+    setColumnsMenuAnchor(null);
   };
 
   if (view === "pivot") {
@@ -417,28 +428,49 @@ export function ResultsPanel({
           </Select>
         </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel id="table-columns-label">Columns</InputLabel>
-          <Select
-            labelId="table-columns-label"
-            multiple
-            value={columns}
-            onChange={onColumnsChange}
-            input={<OutlinedInput label="Columns" />}
-            renderValue={(selected) =>
-              TABLE_COLUMNS.filter((col) => selected.includes(col.id))
-                .map((col) => col.label)
-                .join(", ")
-            }
-          >
-            {TABLE_COLUMNS.map((col) => (
-              <MenuItem key={col.id} value={col.id} disabled={col.required}>
-                <Checkbox checked={columns.includes(col.id)} disabled={col.required} />
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ViewColumnIcon />}
+          aria-haspopup="menu"
+          aria-expanded={Boolean(columnsMenuAnchor)}
+          aria-controls={columnsMenuAnchor ? "table-columns-menu" : undefined}
+          onClick={openColumnsMenu}
+        >
+          Columns
+        </Button>
+        <Menu
+          id="table-columns-menu"
+          anchorEl={columnsMenuAnchor}
+          open={Boolean(columnsMenuAnchor)}
+          onClose={closeColumnsMenu}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}
+        >
+          {TABLE_COLUMNS.map((col) => {
+            const checked = columns.includes(col.id);
+            return (
+              <MenuItem
+                key={col.id}
+                dense
+                disabled={col.required}
+                onClick={() => toggleColumn(col.id)}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <Checkbox
+                    edge="start"
+                    size="small"
+                    tabIndex={-1}
+                    disableRipple
+                    checked={checked}
+                    disabled={col.required}
+                  />
+                </ListItemIcon>
                 <ListItemText primary={col.label} />
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            );
+          })}
+        </Menu>
 
         {topGroups.length ? (
           <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
