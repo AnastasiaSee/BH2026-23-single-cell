@@ -6,7 +6,6 @@ import {
   Box,
   Button,
   Checkbox,
-  FormControlLabel,
   Stack,
   TextField,
   Typography,
@@ -115,40 +114,38 @@ export function FacetList({
         ) : null}
         <Stack spacing={0.25}>
           {visible.map((row) => (
-            <FormControlLabel
+            <Box
               key={row.value}
+              component="label"
               sx={{
-                m: 0,
-                alignItems: "flex-start",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
                 width: "100%",
-                gap: 0.5,
-                ".MuiFormControlLabel-label": { flex: 1, minWidth: 0 },
+                cursor: "pointer",
+                minHeight: 32,
               }}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={selectedSet.has(row.value)}
-                  onChange={() => onToggle(row.value)}
-                />
-              }
-              label={
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 1,
-                    width: "100%",
-                  }}
-                >
-                  <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
-                    {row.value}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {row.count}
-                  </Typography>
-                </Box>
-              }
-            />
+            >
+              <Checkbox
+                size="small"
+                checked={selectedSet.has(row.value)}
+                onChange={() => onToggle(row.value)}
+                sx={{ p: 0.5, flexShrink: 0 }}
+              />
+              <Typography
+                variant="body2"
+                sx={{ flex: 1, minWidth: 0, wordBreak: "break-word", lineHeight: 1.35 }}
+              >
+                {row.value}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ flexShrink: 0, lineHeight: 1.35 }}
+              >
+                {row.count}
+              </Typography>
+            </Box>
           ))}
         </Stack>
         {canShowMore ? (
