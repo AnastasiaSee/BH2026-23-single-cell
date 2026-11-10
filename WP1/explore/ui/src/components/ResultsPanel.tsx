@@ -49,50 +49,75 @@ type TableColumnId =
   | "development_stage"
   | "cells";
 
+const TABLE_CHIP_MAX = 72;
+
 const TABLE_COLUMNS: {
   id: TableColumnId;
   label: string;
-  width: number;
+  /** Fixed width for compact columns; omit so Title can expand. */
+  width?: number;
   required?: boolean;
 }[] = [
-  { id: "title", label: "Title", width: 280, required: true },
-  { id: "source", label: "Source", width: 88 },
-  { id: "organism", label: "Organism", width: 120 },
-  { id: "top_organ", label: "Top organ", width: 120 },
-  { id: "assay", label: "Assay", width: 140 },
-  { id: "disease", label: "Disease", width: 120 },
-  { id: "cell_type", label: "Cell type", width: 140 },
-  { id: "development_stage", label: "Dev. stage", width: 120 },
-  { id: "cells", label: "Cells", width: 72 },
+  { id: "title", label: "Title", required: true },
+  { id: "source", label: "Source", width: 76 },
+  { id: "organism", label: "Organism", width: 96 },
+  { id: "top_organ", label: "Top organ", width: 96 },
+  { id: "assay", label: "Assay", width: 96 },
+  { id: "disease", label: "Disease", width: 96 },
+  { id: "cell_type", label: "Cell type", width: 108 },
+  { id: "development_stage", label: "Dev. stage", width: 96 },
+  { id: "cells", label: "Cells", width: 56 },
 ];
 
-const DEFAULT_COLUMNS: TableColumnId[] = ["title", "organism", "cell_type"];
+const DEFAULT_COLUMNS: TableColumnId[] = ["title", "organism", "cell_type", "cells"];
 
-const COL_WIDTH: Record<TableColumnId, number> = Object.fromEntries(
-  TABLE_COLUMNS.map((col) => [col.id, col.width])
-) as Record<TableColumnId, number>;
+const PREVIOUS_DEFAULTS: TableColumnId[][] = [
+  ["title"],
+  ["title", "organism", "cell_type"],
+];
 
-const noWrapCellSx = (maxWidth: number) => ({
-  maxWidth,
-  whiteSpace: "nowrap" as const,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  verticalAlign: "middle",
-});
+function sameColumns(a: string[], b: TableColumnId[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+function columnCellSx(col: (typeof TABLE_COLUMNS)[number]) {
+  return {
+    width: col.width,
+    maxWidth: col.width,
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    verticalAlign: "middle",
+    ...(col.width
+      ? {}
+      : {
+          width: "auto",
+          maxWidth: "none",
+        }),
+  };
+}
 
 function TruncatedCell({
   text,
-  maxWidth,
+  width,
   children,
   align,
 }: {
   text: string;
-  maxWidth: number;
+  width?: number;
   children?: ReactNode;
   align?: "left" | "right";
 }) {
   return (
-    <TableCell align={align} sx={{ maxWidth, whiteSpace: "nowrap", verticalAlign: "middle" }}>
+    <TableCell
+      align={align}
+      sx={{
+        width: width ?? "auto",
+        maxWidth: width,
+        whiteSpace: "nowrap",
+        verticalAlign: "middle",
+      }}
+    >
       <Tooltip title={text} enterDelay={400}>
         <Typography
           component="span"
@@ -126,8 +151,10 @@ function loadStoredColumns(): TableColumnId[] {
     if (!raw) return DEFAULT_COLUMNS;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return DEFAULT_COLUMNS;
-    // Upgrade prior title-only default to the new default set.
-    if (parsed.length === 1 && parsed[0] === "title") return DEFAULT_COLUMNS;
+    // Upgrade prior stock defaults to the current default set.
+    if (PREVIOUS_DEFAULTS.some((prev) => sameColumns(parsed.map(String), prev))) {
+      return DEFAULT_COLUMNS;
+    }
     const valid = parsed.filter((id): id is TableColumnId =>
       TABLE_COLUMNS.some((col) => col.id === id)
     );
@@ -157,14 +184,23 @@ type Props = {
 };
 
 function ChipCell({
-  maxWidth,
+  width,
   children,
 }: {
-  maxWidth: number;
+  width: number;
   children: ReactNode;
 }) {
   return (
-    <TableCell sx={{ maxWidth, whiteSpace: "nowrap", verticalAlign: "middle", overflow: "hidden" }}>
+    <TableCell
+      sx={{
+        width,
+        maxWidth: width,
+        whiteSpace: "nowrap",
+        verticalAlign: "middle",
+        overflow: "hidden",
+        px: 0.75,
+      }}
+    >
       {children}
     </TableCell>
   );
@@ -185,11 +221,12 @@ function HitRow({
     hit.study_journal && hit.study_journal !== "unknown"
       ? `${title} · ${hit.study_journal}`
       : title;
+  const col = (id: TableColumnId) => TABLE_COLUMNS.find((item) => item.id === id)!;
 
   return (
     <TableRow hover>
       {visible.has("title") ? (
-        <TruncatedCell text={titleTooltip} maxWidth={COL_WIDTH.title}>
+        <TruncatedCell text={titleTooltip}>
           {hit.explorer_url ? (
             <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
               {title}
@@ -200,9 +237,9 @@ function HitRow({
         </TruncatedCell>
       ) : null}
       {visible.has("source") ? (
-        <ChipCell maxWidth={COL_WIDTH.source}>
+        <ChipCell width={col("source").width!}>
           {hit.source ? (
-            <Chip size="small" color="primary" label={formatSource(hit.source)} />
+            <Chip size="small" color="primary" label={formatSource(hit.source)} sx={{ maxWidth: TABLE_CHIP_MAX }} />
           ) : (
             <Typography variant="body2" color="text.secondary">
               —
@@ -211,37 +248,41 @@ function HitRow({
         </ChipCell>
       ) : null}
       {visible.has("organism") ? (
-        <ChipCell maxWidth={COL_WIDTH.organism}>
-          <AttributeChips values={hit.organism} chipMaxWidth={100} wrap={false} />
+        <ChipCell width={col("organism").width!}>
+          <AttributeChips values={hit.organism} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
         </ChipCell>
       ) : null}
       {visible.has("top_organ") ? (
-        <ChipCell maxWidth={COL_WIDTH.top_organ}>
-          <AttributeChips values={hit.top_organ} chipMaxWidth={100} wrap={false} />
+        <ChipCell width={col("top_organ").width!}>
+          <AttributeChips values={hit.top_organ} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
         </ChipCell>
       ) : null}
       {visible.has("assay") ? (
-        <ChipCell maxWidth={COL_WIDTH.assay}>
-          <AttributeChips values={hit.assay} chipMaxWidth={110} wrap={false} />
+        <ChipCell width={col("assay").width!}>
+          <AttributeChips values={hit.assay} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
         </ChipCell>
       ) : null}
       {visible.has("disease") ? (
-        <ChipCell maxWidth={COL_WIDTH.disease}>
-          <AttributeChips values={hit.disease} chipMaxWidth={100} wrap={false} />
+        <ChipCell width={col("disease").width!}>
+          <AttributeChips values={hit.disease} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
         </ChipCell>
       ) : null}
       {visible.has("cell_type") ? (
-        <ChipCell maxWidth={COL_WIDTH.cell_type}>
-          <AttributeChips values={hit.cell_type} chipMaxWidth={110} wrap={false} />
+        <ChipCell width={col("cell_type").width!}>
+          <AttributeChips values={hit.cell_type} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
         </ChipCell>
       ) : null}
       {visible.has("development_stage") ? (
-        <ChipCell maxWidth={COL_WIDTH.development_stage}>
-          <AttributeChips values={hit.development_stage} chipMaxWidth={100} wrap={false} />
+        <ChipCell width={col("development_stage").width!}>
+          <AttributeChips
+            values={hit.development_stage}
+            chipMaxWidth={TABLE_CHIP_MAX}
+            wrap={false}
+          />
         </ChipCell>
       ) : null}
       {visible.has("cells") ? (
-        <TruncatedCell text={cellsTooltip} maxWidth={COL_WIDTH.cells} align="right">
+        <TruncatedCell text={cellsTooltip} width={col("cells").width} align="right">
           {cellsLabel}
         </TruncatedCell>
       ) : null}
@@ -433,7 +474,7 @@ export function ResultsPanel({
                     <TableCell
                       key={col.id}
                       align={col.id === "cells" ? "right" : "left"}
-                      sx={noWrapCellSx(col.width)}
+                      sx={columnCellSx(col)}
                     >
                       {col.label}
                     </TableCell>
