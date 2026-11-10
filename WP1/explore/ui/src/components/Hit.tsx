@@ -22,7 +22,7 @@ export function hitTitle(hit: ExperimentHit): string {
 }
 
 export function formatSource(source?: string): string {
-  if (source === "fenix") return "Fenix";
+  if (source === "scfair") return "scFair";
   return source || "unknown";
 }
 

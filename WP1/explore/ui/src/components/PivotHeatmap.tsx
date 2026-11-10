@@ -21,7 +21,7 @@ export const PIVOT_FIELDS: { value: FacetField; label: string }[] = [
   { value: "study_journal", label: "Journal" },
 ];
 
-const STORAGE_KEY = "fenix-explore-pivot-axes";
+const STORAGE_KEY = "scfair-explore-pivot-axes";
 
 function loadAxes(): { row: FacetField; col: FacetField } {
   try {

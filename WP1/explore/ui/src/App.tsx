@@ -163,8 +163,7 @@ export default function App() {
     return (
       <div className="shell">
         <header className="hero">
-          <p className="eyebrow">WP1 explore</p>
-          <h1>Single-cell catalogs</h1>
+          <h1>scFair datasets</h1>
         </header>
         <p className="error">
           {bootError}
@@ -180,9 +179,8 @@ export default function App() {
     return (
       <div className="shell">
         <header className="hero">
-          <p className="eyebrow">WP1 explore</p>
-          <h1>Single-cell catalogs</h1>
-          <p className="lede">Loading catalog Parquet…</p>
+          <h1>scFair datasets</h1>
+          <p className="lede">Loading catalog…</p>
         </header>
       </div>
     );
@@ -191,12 +189,10 @@ export default function App() {
   return (
     <div className="shell">
       <header className="hero">
-        <p className="eyebrow">WP1 explore</p>
-        <h1>Single-cell catalogs</h1>
+        <h1>scFair datasets</h1>
         <p className="lede">
-          Fully client-side explore over catalog Parquet (hyparquet + in-memory
-          filters — no large WASM engine). Re-run <code>export_parquet.py</code>{" "}
-          when JSON sources change.
+          Browse and filter single-cell datasets by organism, tissue, assay, and
+          more.
         </p>
       </header>
 

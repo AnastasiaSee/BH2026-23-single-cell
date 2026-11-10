@@ -5,7 +5,7 @@ import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";
 import type { ResultsView } from "./ViewToggle";
 
-const GROUP_STORAGE_KEY = "fenix-explore-group-by";
+const GROUP_STORAGE_KEY = "scfair-explore-group-by";
 const NONE_LABEL = "(none)";
 
 function loadStoredGroupBy(): GroupByField {

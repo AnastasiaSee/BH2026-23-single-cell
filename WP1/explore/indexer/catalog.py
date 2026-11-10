@@ -25,9 +25,12 @@ from ols_tissue import (
 
 ROOT = Path(__file__).resolve().parents[1]
 WP1 = ROOT.parent
-DEFAULT_FENIX_JSON = WP1 / "fenix" / "experiments.json"
+# Catalog JSON still lives under WP1/fenix/; explore `source` facet is scfair.
+DEFAULT_CATALOG_JSON = WP1 / "fenix" / "experiments.json"
+DEFAULT_FENIX_JSON = DEFAULT_CATALOG_JSON  # alias for older scripts
 
-SOURCE_FENIX = "fenix"
+SOURCE_SCFAIR = "scfair"
+SOURCE_FENIX = SOURCE_SCFAIR  # backwards-compatible alias
 
 
 # Acronyms / tokens kept upper (or special-cased) inside Title Case facets.
@@ -296,7 +299,7 @@ def flatten_fenix(
     )
 
     search_bits = [
-        SOURCE_FENIX,
+        SOURCE_SCFAIR,
         title,
         raw.get("experiment_id"),
         raw.get("study_id"),
@@ -311,9 +314,9 @@ def flatten_fenix(
     ]
 
     doc = {
-        "id": f"fenix::{doc_id}",
+        "id": f"scfair::{doc_id}",
         "title": str(title),
-        "source": SOURCE_FENIX,
+        "source": SOURCE_SCFAIR,
         "experiment_id": str(raw.get("experiment_id") or ""),
         "study_id": str(raw.get("study_id") or ""),
         "organism": organism,

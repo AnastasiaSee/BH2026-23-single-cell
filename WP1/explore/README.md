@@ -4,7 +4,7 @@
 
 Catalogs:
 
-- [`WP1/fenix/experiments.json`](../fenix/experiments.json) → `source=fenix`
+- [`WP1/fenix/experiments.json`](../fenix/experiments.json) → `source=scfair`
 - Optional partner JSON via `--json SOURCE=PATH` (additional sources TBD)
 
 | Piece | Role |
