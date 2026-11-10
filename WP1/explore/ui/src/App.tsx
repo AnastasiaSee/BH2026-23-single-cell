@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Container,
   Pagination,
@@ -14,6 +13,7 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import InputAdornment from "@mui/material/InputAdornment";
+import { EllipsisChip } from "./components/EllipsisChip";
 import { FacetList } from "./components/FacetList";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { ViewToggle, type ResultsView } from "./components/ViewToggle";
@@ -281,9 +281,10 @@ export default function App() {
           {activeRefinements.length ? (
             <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} mb={2}>
               {activeRefinements.map(({ field, value }) => (
-                <Chip
+                <EllipsisChip
                   key={`${field}:${value}`}
                   label={`${field}: ${value}`}
+                  maxWidth={220}
                   onDelete={() => onToggleFacet(field as FacetField, value)}
                 />
               ))}

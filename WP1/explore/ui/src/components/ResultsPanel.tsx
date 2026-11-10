@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Chip,
   FormControl,
   InputLabel,
   Link,
@@ -17,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ExperimentRow, FacetSelection } from "../catalogQuery";
+import { EllipsisChip } from "./EllipsisChip";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
 import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";
@@ -190,11 +190,12 @@ export function ResultsPanel({
         {topGroups.length ? (
           <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
             {topGroups.map((group) => (
-              <Chip
+              <EllipsisChip
                 key={group.key}
                 clickable
                 color={activeChip === group.key ? "primary" : "default"}
                 label={`${group.label} (${group.hits.length})`}
+                maxWidth={200}
                 onClick={() => focusGroup(group.key, group.label)}
               />
             ))}

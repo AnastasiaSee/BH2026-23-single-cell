@@ -8,6 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { EllipsisChip } from "./EllipsisChip";
 
 export type ExperimentHit = {
   objectID: string;
@@ -58,7 +59,12 @@ function chips(values?: string[], limit = 3) {
   return (
     <Stack direction="row" flexWrap="wrap" useFlexGap gap={0.5}>
       {shown.map((value) => (
-        <Chip key={value} size="small" label={value} variant="outlined" />
+        <EllipsisChip
+          key={value}
+          size="small"
+          label={value}
+          variant="outlined"
+        />
       ))}
       {rest > 0 ? <Chip size="small" label={`+${rest}`} variant="outlined" /> : null}
     </Stack>
@@ -99,7 +105,12 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
             <Chip size="small" label={`${hit.feature_count.toLocaleString()} features`} />
           ) : null}
           {hit.study_journal && hit.study_journal !== "unknown" ? (
-            <Chip size="small" variant="outlined" label={hit.study_journal} />
+            <EllipsisChip
+              size="small"
+              variant="outlined"
+              label={hit.study_journal}
+              maxWidth={180}
+            />
           ) : null}
         </Stack>
         <Box
