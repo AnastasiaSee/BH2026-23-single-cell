@@ -44,7 +44,8 @@ export function joinValues(values?: string[], limit = 3): string {
   return rest > 0 ? `${shown.join(", ")} +${rest}` : shown.join(", ");
 }
 
-function chips(values?: string[], limit = 4) {
+/** Attribute lists: at most 3 value chips, then a single +n chip. */
+function chips(values?: string[], limit = 3) {
   if (!values?.length) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -110,11 +111,11 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
         >
           <FacetBlock label="Organism">{chips(hit.organism)}</FacetBlock>
           <FacetBlock label="Top organ">{chips(hit.top_organ)}</FacetBlock>
-          <FacetBlock label="Tissue">{chips(hit.tissue, 5)}</FacetBlock>
+          <FacetBlock label="Tissue">{chips(hit.tissue)}</FacetBlock>
           <FacetBlock label="Assay">{chips(hit.assay)}</FacetBlock>
           <FacetBlock label="Disease">{chips(hit.disease)}</FacetBlock>
-          <FacetBlock label="Cell type">{chips(hit.cell_type, 4)}</FacetBlock>
-          <FacetBlock label="Dev. stage">{chips(hit.development_stage, 3)}</FacetBlock>
+          <FacetBlock label="Cell type">{chips(hit.cell_type)}</FacetBlock>
+          <FacetBlock label="Dev. stage">{chips(hit.development_stage)}</FacetBlock>
         </Box>
       </CardContent>
     </Card>

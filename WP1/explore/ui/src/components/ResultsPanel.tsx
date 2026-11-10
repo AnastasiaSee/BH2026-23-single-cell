@@ -74,12 +74,12 @@ function HitRow({ hit }: { hit: ExperimentHit }) {
         ) : null}
       </TableCell>
       <TableCell>{hit.source || "—"}</TableCell>
-      <TableCell>{joinValues(hit.organism, 2)}</TableCell>
-      <TableCell>{joinValues(hit.top_organ, 2)}</TableCell>
-      <TableCell>{joinValues(hit.assay, 2)}</TableCell>
-      <TableCell>{joinValues(hit.disease, 2)}</TableCell>
-      <TableCell>{joinValues(hit.cell_type, 2)}</TableCell>
-      <TableCell>{joinValues(hit.development_stage, 2)}</TableCell>
+      <TableCell>{joinValues(hit.organism)}</TableCell>
+      <TableCell>{joinValues(hit.top_organ)}</TableCell>
+      <TableCell>{joinValues(hit.assay)}</TableCell>
+      <TableCell>{joinValues(hit.disease)}</TableCell>
+      <TableCell>{joinValues(hit.cell_type)}</TableCell>
+      <TableCell>{joinValues(hit.development_stage)}</TableCell>
       <TableCell align="right">{(hit.cell_count ?? 0).toLocaleString()}</TableCell>
     </TableRow>
   );
