@@ -28,10 +28,10 @@ The API returns ~10 studies per page; the script walks `total_pages`.
 
 ## Mapping into the explore index
 
-The Typesense indexer (`WP1/explore/indexer/`) flattens each study with `source=single_cell_portal` and maps:
+The Parquet exporter (`WP1/explore/indexer/export_parquet.py`) flattens each study with `source=single_cell_portal` and maps:
 
-| Typesense field | SCP field |
-|-----------------|-----------|
+| Explore field | SCP field |
+|---------------|-----------|
 | `organism` | `metadata.species` |
 | `tissue` / `top_organ` | `metadata.organ` |
 | `assay` | `metadata.library_preparation_protocol` |

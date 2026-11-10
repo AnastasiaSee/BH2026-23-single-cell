@@ -1,101 +1,101 @@
 # Unified experiment explore stack (Fenix + Single Cell Portal)
 
-**Primary path: client-side Parquet + DuckDB-WASM** (no search server).
+**Client-side Parquet + DuckDB-WASM** — no search server, no API keys.
 
 Catalogs:
 
 - [`WP1/fenix/experiments.json`](../fenix/experiments.json) → `source=fenix`
 - [`WP1/single_cell_portal/studies.json`](../single_cell_portal/studies.json) → `source=single_cell_portal`
+- Optional partner JSON via `--json SOURCE=PATH` (see below)
 
 | Piece | Role |
 |-------|------|
-| **Python exporter** | Flattens both catalogs (+ OLS tissue/cell-type hierarchy) → `ui/public/experiments.parquet` |
-| **React + Vite + DuckDB-WASM** | Search, facets, Cards/Table/Pivot entirely in the browser |
-| **Typesense + FastAPI** *(optional / legacy)* | Still available under `docker-compose` / `api/` if you want InstantSearch or MCP stubs |
+| **Python exporter** | Flattens catalogs (+ OLS tissue/cell-type hierarchy) → `ui/public/experiments.parquet` |
+| **React + Vite + DuckDB-WASM** | Search, facets, Cards/Table/Pivot in the browser |
 
 ## Prerequisites
 
 - Python 3.11+ (Parquet export)
 - Node.js 20+ (UI)
-- Catalogs:
-  - Fenix: `python3 WP1/fenix/download_experiments.py` (or use the cached file)
-  - SCP: `python3 WP1/single_cell_portal/download_studies.py --summarize`
+- Catalogs on disk (Fenix / SCP download scripts, or partner JSON)
 
-## Quick start (Parquet + DuckDB only)
+## Quick start
 
 ```bash
 cd WP1/explore
 
-# 1) Flatten catalogs → Parquet (uses on-disk OLS caches when present)
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r indexer/requirements.txt
 python indexer/export_parquet.py
-# → ui/public/experiments.parquet (~1 MiB for 1500 rows)
+# → ui/public/experiments.parquet (~1 MiB for ~1500 rows)
 
-# 2) UI
 cd ui
 npm install
 npm run dev
 # → http://127.0.0.1:5173
 ```
 
-Open the UI (or Cursor Try Live on port 5173). The browser downloads the Parquet file and runs DuckDB-WASM locally — no Typesense, no FastAPI, no API keys.
+## Updating the Parquet file with more JSON
 
-### Refresh data
+Whenever catalogs change (new rows, new source files, refreshed downloads):
+
+1. **Put the JSON on disk** (Fenix snapshot, SCP snapshot, and/or a partner file).
+2. **Re-export:**
 
 ```bash
-python indexer/export_parquet.py          # reuse OLS cache
-python indexer/export_parquet.py --refresh-ols   # re-query OLS
+cd WP1/explore
+source .venv/bin/activate
+
+# Defaults: Fenix + SCP
+python indexer/export_parquet.py
+
+# Add one or more partner catalogs (new-source ingest schema):
+python indexer/export_parquet.py \
+  --json example_partner=/path/to/partner-datasets.json
+
+# Replace built-ins if needed:
+python indexer/export_parquet.py \
+  --skip-scp \
+  --fenix-json ../fenix/experiments.json \
+  --json my_org=../partner/datasets.json
 ```
 
-## What is in the Parquet file
+3. **Reload the UI** (hard-refresh the browser so Vite re-fetches `/experiments.parquet`).
 
-Same flattened document shape as the Typesense indexer (namespaced ids, `source`, facet lists, `search_blob`, cell counts, explorer URLs), with hierarchy columns renamed for SQL:
+Partner JSON shape: a top-level `{ "datasets": [ … ] }` (or `{ "data": [ … ] }` / bare array). Each dataset should match the partner ingest schema (`id`, `title`, Term objects for `tissue` / `cell_type` / …). See the store doc `new-source-ingest-schema.md` / `new-source-example.json`.
 
-| InstantSearch-style field | Parquet / DuckDB column |
-|---------------------------|-------------------------|
-| `tissue_hierarchy.lvl0…5` | `tissue_hierarchy_lvl0…5` |
-| `cell_type_hierarchy.lvl0…5` | `cell_type_hierarchy_lvl0…5` |
+Ids are namespaced as `{source}::{id}` so sources can share local ids without colliding. The faceted `source` field comes from the built-in name (`fenix`, `single_cell_portal`) or the `SOURCE` in `--json SOURCE=PATH`.
 
-Facet values are case-normalized at export time (`canonicalize_facet_value`).
+### OLS hierarchy refresh
 
-### Tissue & cell-type hierarchy (OLS)
+```bash
+python indexer/export_parquet.py --refresh-ols   # re-query OLS
+# or warm caches first:
+python indexer/enrich_tissue_hierarchy.py --scp
+python indexer/enrich_cell_type_hierarchy.py
+python indexer/export_parquet.py
+```
 
-Export resolves tissues (UBERON) and cell types (CL) via [EBI OLS4](https://www.ebi.ac.uk/ols4/) using the same caches as Typesense indexing:
-
-- `indexer/ols_cache/uberon_paths.json`
-- `indexer/ols_cache/cl_paths.json`
+Caches live under `indexer/ols_cache/`.
 
 ## UI features
 
 - Full-text filter over `title` / `search_blob` / `experiment_id`
-- Facet checklists (list columns use `list_has_any` / `UNNEST`)
-- Cards / Table (with group-by) / Pivot heatmap (click a cell to apply both axes as filters)
-- Pagination in the browser
-
-## Optional: Typesense InstantSearch path
-
-```bash
-docker compose up -d
-python indexer/index_experiments.py --recreate
-# then restore an InstantSearch UI or call Typesense directly
-```
-
-Optional FastAPI MCP stubs: `cd api && uvicorn main:app --reload --port 8000`.
+- Facet checklists (list columns via DuckDB `list_has_any` / `UNNEST`)
+- Cards / Table (group-by) / Pivot heatmap
+- Client-side pagination
 
 ## Layout
 
 ```
 WP1/explore/
   indexer/
-    export_parquet.py           # primary: JSON catalogs → Parquet
-    index_experiments.py        # optional Typesense indexer
+    catalog.py                  # flatten helpers (Fenix / SCP / partner)
+    export_parquet.py           # JSON catalogs → Parquet
     ols_*.py / ols_cache/       # OLS hierarchy enrichment
   ui/
     public/experiments.parquet  # static artifact served by Vite
     src/duckdb.ts               # DuckDB-WASM loader + SQL helpers
     src/App.tsx
-  api/                          # optional MCP stubs
-  docker-compose.yml            # optional Typesense
 ```

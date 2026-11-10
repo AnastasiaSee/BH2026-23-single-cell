@@ -194,8 +194,9 @@ export default function App() {
         <p className="eyebrow">WP1 explore</p>
         <h1>Single-cell catalogs</h1>
         <p className="lede">
-          Fully client-side explore over Fenix + Single Cell Portal — Parquet in
-          the browser, queried with DuckDB-WASM. No Typesense or FastAPI required.
+          Fully client-side explore over catalog Parquet — queried in the browser
+          with DuckDB-WASM. Re-run{" "}
+          <code>export_parquet.py</code> when JSON sources change.
         </p>
       </header>
 

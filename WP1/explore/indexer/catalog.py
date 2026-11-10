@@ -1,88 +1,37 @@
 #!/usr/bin/env python3
-"""Flatten Fenix + Single Cell Portal catalogs into one Typesense collection.
+"""Flatten experiment catalogs into explore documents (Parquet export).
 
-Every document includes a faceted `source` field:
-  - fenix
-  - single_cell_portal
+Every document includes a faceted `source` field (e.g. fenix, single_cell_portal,
+or a partner source name).
 """
 
 from __future__ import annotations
 
-import argparse
 import json
-import os
-import sys
-import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-from dotenv import load_dotenv
-import typesense
-from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound
-
 from ols_cell_type import (
     MAX_LEVELS as CELL_TYPE_HIER_MAX_LEVELS,
-    load_cache as load_cl_cache,
     paths_to_hierarchy_fields as cell_type_paths_to_hierarchy_fields,
     resolve_path as resolve_cl_path,
-    warm_cache_for_curies as warm_cl_cache_for_curies,
 )
 from ols_tissue import (
     MAX_LEVELS as TISSUE_HIER_MAX_LEVELS,
-    load_cache as load_ols_cache,
     paths_to_hierarchy_fields,
     resolve_path,
-    warm_cache_for_curies,
-    warm_cache_for_labels,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 WP1 = ROOT.parent
-load_dotenv(ROOT / ".env")
-load_dotenv(ROOT / ".env.example", override=False)
-
-COLLECTION = os.getenv("TYPESENSE_COLLECTION", "experiments")
-DEFAULT_FENIX_JSON = Path(
-    os.getenv("EXPERIMENTS_JSON", str(WP1 / "fenix" / "experiments.json"))
-)
-DEFAULT_SCP_JSON = Path(
-    os.getenv(
-        "SCP_STUDIES_JSON", str(WP1 / "single_cell_portal" / "studies.json")
-    )
-)
+DEFAULT_FENIX_JSON = WP1 / "fenix" / "experiments.json"
+DEFAULT_SCP_JSON = WP1 / "single_cell_portal" / "studies.json"
 
 SOURCE_FENIX = "fenix"
 SOURCE_SCP = "single_cell_portal"
 SCP_ORIGIN = "https://singlecell.broadinstitute.org"
 
-FACET_FIELDS = [
-    "source",
-    "organism",
-    "top_organ",
-    "tissue",
-    "tissue_type",
-    "tissue_hierarchy.lvl0",
-    "tissue_hierarchy.lvl1",
-    "tissue_hierarchy.lvl2",
-    "tissue_hierarchy.lvl3",
-    "tissue_hierarchy.lvl4",
-    "tissue_hierarchy.lvl5",
-    "assay",
-    "disease",
-    "suspension_type",
-    "sex",
-    "development_stage",
-    "self_reported_ethnicity",
-    "study_journal",
-    "cell_type",
-    "cell_type_hierarchy.lvl0",
-    "cell_type_hierarchy.lvl1",
-    "cell_type_hierarchy.lvl2",
-    "cell_type_hierarchy.lvl3",
-    "cell_type_hierarchy.lvl4",
-    "cell_type_hierarchy.lvl5",
-]
 
 # Acronyms / tokens kept upper (or special-cased) inside Title Case facets.
 _UPPER_TOKENS = {
@@ -484,111 +433,6 @@ def flatten_scp(
     doc.update(empty_cell_type_hierarchy())
     return doc
 
-
-COLLECTION_SCHEMA: dict[str, Any] = {
-    "name": COLLECTION,
-    "fields": [
-        {"name": "title", "type": "string"},
-        {"name": "source", "type": "string", "facet": True},
-        {"name": "experiment_id", "type": "string", "optional": True},
-        {"name": "study_id", "type": "string", "optional": True, "facet": True},
-        {"name": "organism", "type": "string[]", "facet": True, "optional": True},
-        {"name": "top_organ", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue_type", "type": "string[]", "facet": True, "optional": True},
-        # InstantSearch HierarchicalMenu (Typesense field.lvlN convention)
-        {"name": "tissue_hierarchy.lvl0", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue_hierarchy.lvl1", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue_hierarchy.lvl2", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue_hierarchy.lvl3", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue_hierarchy.lvl4", "type": "string[]", "facet": True, "optional": True},
-        {"name": "tissue_hierarchy.lvl5", "type": "string[]", "facet": True, "optional": True},
-        {"name": "assay", "type": "string[]", "facet": True, "optional": True},
-        {"name": "disease", "type": "string[]", "facet": True, "optional": True},
-        {"name": "suspension_type", "type": "string[]", "facet": True, "optional": True},
-        {"name": "sex", "type": "string[]", "facet": True, "optional": True},
-        {"name": "development_stage", "type": "string[]", "facet": True, "optional": True},
-        {
-            "name": "self_reported_ethnicity",
-            "type": "string[]",
-            "facet": True,
-            "optional": True,
-        },
-        {"name": "study_journal", "type": "string", "facet": True, "optional": True},
-        {"name": "cell_type", "type": "string[]", "facet": True, "optional": True},
-        # InstantSearch HierarchicalMenu for Cell Ontology (CL)
-        {"name": "cell_type_hierarchy.lvl0", "type": "string[]", "facet": True, "optional": True},
-        {"name": "cell_type_hierarchy.lvl1", "type": "string[]", "facet": True, "optional": True},
-        {"name": "cell_type_hierarchy.lvl2", "type": "string[]", "facet": True, "optional": True},
-        {"name": "cell_type_hierarchy.lvl3", "type": "string[]", "facet": True, "optional": True},
-        {"name": "cell_type_hierarchy.lvl4", "type": "string[]", "facet": True, "optional": True},
-        {"name": "cell_type_hierarchy.lvl5", "type": "string[]", "facet": True, "optional": True},
-        {"name": "cell_count", "type": "int32"},
-        {"name": "feature_count", "type": "int32", "optional": True},
-        {"name": "published_at", "type": "int64", "optional": True},
-        {"name": "explorer_url", "type": "string", "optional": True, "index": False},
-        {"name": "h5ad_url", "type": "string", "optional": True, "index": False},
-        {"name": "search_blob", "type": "string", "optional": True},
-    ],
-    "default_sorting_field": "cell_count",
-    "token_separators": ["_", "-", "/"],
-}
-
-
-def client_from_env() -> typesense.Client:
-    return typesense.Client(
-        {
-            "nodes": [
-                {
-                    "host": os.getenv("TYPESENSE_HOST", "localhost"),
-                    "port": os.getenv("TYPESENSE_PORT", "8108"),
-                    "protocol": os.getenv("TYPESENSE_PROTOCOL", "http"),
-                }
-            ],
-            "api_key": os.getenv("TYPESENSE_API_KEY", "bh2026-typesense-admin-key"),
-            "connection_timeout_seconds": 30,
-        }
-    )
-
-
-def wait_for_typesense(client: typesense.Client, attempts: int = 30) -> None:
-    last_error: Exception | None = None
-    for _ in range(attempts):
-        try:
-            health = client.operations.is_healthy()
-            if health is True or health.get("ok") is True:
-                return
-        except Exception as exc:  # noqa: BLE001
-            last_error = exc
-        time.sleep(1)
-    raise RuntimeError(f"Typesense not healthy after {attempts}s: {last_error}")
-
-
-def recreate_collection(client: typesense.Client) -> None:
-    try:
-        client.collections[COLLECTION].delete()
-        print(f"Deleted existing collection '{COLLECTION}'")
-    except ObjectNotFound:
-        pass
-    client.collections.create(COLLECTION_SCHEMA)
-    print(f"Created collection '{COLLECTION}'")
-
-
-def ensure_collection(client: typesense.Client, *, recreate: bool) -> None:
-    if recreate:
-        recreate_collection(client)
-        return
-    try:
-        client.collections[COLLECTION].retrieve()
-        print(f"Using existing collection '{COLLECTION}'")
-    except ObjectNotFound:
-        try:
-            client.collections.create(COLLECTION_SCHEMA)
-            print(f"Created collection '{COLLECTION}'")
-        except ObjectAlreadyExists:
-            pass
-
-
 def load_fenix(path: Path) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, dict) and "data" in payload:
@@ -615,171 +459,112 @@ def load_scp(path: Path) -> list[dict[str, Any]]:
     return records
 
 
-def batched(items: list[dict[str, Any]], size: int) -> Iterable[list[dict[str, Any]]]:
-    for i in range(0, len(items), size):
-        yield items[i : i + size]
-
-
-def import_docs(
-    client: typesense.Client, docs: list[dict[str, Any]], batch_size: int
-) -> tuple[int, int]:
-    imported = 0
-    failed = 0
-    for batch in batched(docs, batch_size):
-        result = client.collections[COLLECTION].documents.import_(
-            batch, {"action": "upsert"}
-        )
-        if isinstance(result, str):
-            rows = [json.loads(line) for line in result.splitlines() if line.strip()]
+def load_partner(path: Path) -> list[dict[str, Any]]:
+    """Load partner catalogs: `{datasets:[…]}`, `{data:[…]}`, or a bare list."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        records = payload
+    elif isinstance(payload, dict):
+        if isinstance(payload.get("datasets"), list):
+            records = payload["datasets"]
+        elif isinstance(payload.get("data"), list):
+            records = payload["data"]
         else:
-            rows = list(result)
-        for row in rows:
-            if row.get("success"):
-                imported += 1
-            else:
-                failed += 1
-                print(f"Import error: {row}", file=sys.stderr)
-    return imported, failed
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--fenix-json", type=Path, default=DEFAULT_FENIX_JSON)
-    parser.add_argument("--scp-json", type=Path, default=DEFAULT_SCP_JSON)
-    parser.add_argument(
-        "--skip-fenix", action="store_true", help="Do not index Fenix experiments"
-    )
-    parser.add_argument(
-        "--skip-scp", action="store_true", help="Do not index Single Cell Portal studies"
-    )
-    parser.add_argument(
-        "--recreate",
-        action="store_true",
-        help="Drop and recreate the Typesense collection before indexing",
-    )
-    parser.add_argument(
-        "--skip-ols",
-        action="store_true",
-        help="Skip OLS tissue/cell-type hierarchy enrichment (hierarchy fields stay empty)",
-    )
-    parser.add_argument(
-        "--refresh-ols",
-        action="store_true",
-        help="Re-query OLS even when cache entries exist",
-    )
-    parser.add_argument("--batch-size", type=int, default=100)
-    args = parser.parse_args(argv)
-
-    docs: list[dict[str, Any]] = []
-    counts = {SOURCE_FENIX: 0, SOURCE_SCP: 0}
-    ols_cache: dict[str, Any] | None = None
-    cl_cache: dict[str, Any] | None = None
-
-    fenix_records: list[dict[str, Any]] = []
-    scp_records: list[dict[str, Any]] = []
-
-    if not args.skip_fenix:
-        if not args.fenix_json.is_file():
-            print(f"Missing Fenix JSON: {args.fenix_json}", file=sys.stderr)
-            return 1
-        fenix_records = load_fenix(args.fenix_json)
-
-    if not args.skip_scp:
-        if not args.scp_json.is_file():
-            print(f"Missing SCP JSON: {args.scp_json}", file=sys.stderr)
-            print(
-                "Run: python3 WP1/single_cell_portal/download_studies.py --summarize",
-                file=sys.stderr,
+            raise ValueError(
+                f"Unexpected partner JSON shape in {path} "
+                "(expected datasets/data list or a bare array)"
             )
-            return 1
-        scp_records = load_scp(args.scp_json)
+    else:
+        raise ValueError(f"Unexpected partner JSON shape in {path}")
+    return records
 
-    if not args.skip_ols and (fenix_records or scp_records):
-        print("Warming OLS tissue hierarchy cache…")
-        curies: list[str] = []
-        for exp in fenix_records:
-            for tissue in exp.get("tissue") or []:
-                if isinstance(tissue, dict):
-                    if tissue.get("ontology_term_id"):
-                        curies.append(str(tissue["ontology_term_id"]))
-                    if tissue.get("top-organ-uberon"):
-                        curies.append(str(tissue["top-organ-uberon"]))
-        warm_cache_for_curies(
-            curies, refresh=args.refresh_ols, sleep_s=0.05 if args.refresh_ols else 0.02
-        )
-        organ_labels: list[str] = []
-        for study in scp_records:
-            meta = study.get("metadata") if isinstance(study, dict) else {}
-            for organ in (meta or {}).get("organ") or []:
-                organ_labels.append(str(organ))
-        if organ_labels:
-            warm_cache_for_labels(
-                organ_labels,
-                refresh=args.refresh_ols,
-                sleep_s=0.05 if args.refresh_ols else 0.02,
-            )
-        ols_cache = load_ols_cache()
-        print(
-            f"OLS tissue cache loaded "
-            f"({len(ols_cache.get('by_curie', {}))} curies, "
-            f"{len(ols_cache.get('by_label', {}))} labels)"
-        )
 
-        print("Warming OLS cell-type (CL) hierarchy cache…")
-        cl_curies: list[str] = []
-        for exp in fenix_records:
-            for cell in exp.get("cell_type") or []:
-                if isinstance(cell, dict) and cell.get("ontology_term_id"):
-                    cl_curies.append(str(cell["ontology_term_id"]))
-        if cl_curies:
-            warm_cl_cache_for_curies(
-                cl_curies,
-                refresh=args.refresh_ols,
-                sleep_s=0.05 if args.refresh_ols else 0.02,
-            )
-        cl_cache = load_cl_cache()
-        print(
-            f"OLS CL cache loaded "
-            f"({len(cl_cache.get('by_curie', {}))} curies, "
-            f"{len(cl_cache.get('by_label', {}))} labels)"
-        )
+def flatten_partner(
+    raw: dict[str, Any],
+    *,
+    source: str,
+    ols_cache: dict[str, Any] | None = None,
+    cl_cache: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Flatten a partner record (same Term shape as the new-source ingest schema)."""
+    source = str(source or raw.get("source") or "partner").strip() or "partner"
+    tissues = raw.get("tissue") or []
+    if not isinstance(tissues, list):
+        tissues = [tissues]
+    raw_cell_types = raw.get("cell_type") or []
+    if not isinstance(raw_cell_types, list):
+        raw_cell_types = [raw_cell_types]
 
-    if fenix_records:
-        fenix_docs = [
-            flatten_fenix(record, ols_cache=ols_cache, cl_cache=cl_cache)
-            for record in fenix_records
-        ]
-        docs.extend(fenix_docs)
-        counts[SOURCE_FENIX] = len(fenix_docs)
-        print(f"Prepared {len(fenix_docs)} Fenix docs from {args.fenix_json}")
+    doc_id = str(raw.get("id") or raw.get("experiment_id") or "").strip()
+    if not doc_id:
+        raise ValueError("Partner dataset missing id/experiment_id")
+    title = raw.get("title") or raw.get("experiment_id") or doc_id
+    journal = raw.get("study_journal")
+    if isinstance(journal, dict):
+        journal = journal.get("label") or journal.get("long_name")
 
-    if scp_records:
-        scp_docs = [
-            flatten_scp(record, ols_cache=ols_cache, cl_cache=cl_cache)
-            for record in scp_records
-        ]
-        docs.extend(scp_docs)
-        counts[SOURCE_SCP] = len(scp_docs)
-        print(f"Prepared {len(scp_docs)} SCP docs from {args.scp_json}")
+    h5ad_url = raw.get("h5ad_url")
+    if not h5ad_url:
+        for asset in raw.get("assets") or []:
+            if isinstance(asset, dict) and str(asset.get("filetype", "")).upper() == "H5AD":
+                h5ad_url = asset.get("url")
+                break
 
-    if not docs:
-        print("Nothing to index.", file=sys.stderr)
-        return 1
-
-    client = client_from_env()
-    wait_for_typesense(client)
-    ensure_collection(client, recreate=args.recreate)
-
-    print(f"Indexing {len(docs)} documents…")
-    imported, failed = import_docs(client, docs, args.batch_size)
-    print(f"Done. imported={imported} failed={failed}")
-    print(
-        "Counts by source: "
-        + ", ".join(f"{name}={counts[name]}" for name in (SOURCE_FENIX, SOURCE_SCP))
+    organism = labels(raw.get("organism"))
+    top_organ = tissue_facet(tissues, "top-organ-name")
+    tissue = tissue_facet(tissues, "label")
+    assay = labels(raw.get("assay"))
+    disease = labels(raw.get("disease"))
+    cell_type = labels(raw_cell_types)
+    hierarchy = paths_to_hierarchy_fields(
+        fenix_tissue_paths(tissues, ols_cache),
+        canonicalize=canonicalize_facet_value,
     )
-    print("Facet fields:", ", ".join(FACET_FIELDS))
-    return 0 if failed == 0 else 2
+    cell_hierarchy = cell_type_paths_to_hierarchy_fields(
+        fenix_cell_type_paths(raw_cell_types, cl_cache),
+        canonicalize=canonicalize_facet_value,
+    )
+
+    search_bits = [
+        source,
+        title,
+        raw.get("experiment_id"),
+        raw.get("study_id"),
+        raw.get("citation"),
+        *organism,
+        *assay,
+        *disease,
+        *cell_type,
+        *tissue,
+        *top_organ,
+    ]
+    doc = {
+        "id": f"{source}::{doc_id}",
+        "title": str(title),
+        "source": source,
+        "experiment_id": str(raw.get("experiment_id") or doc_id),
+        "study_id": str(raw.get("study_id") or ""),
+        "organism": organism,
+        "top_organ": top_organ,
+        "tissue": tissue,
+        "tissue_type": tissue_facet(tissues, "tissue_type"),
+        "assay": assay,
+        "disease": disease,
+        "suspension_type": labels(raw.get("suspension_type")),
+        "sex": labels(raw.get("sex")),
+        "development_stage": labels(raw.get("development_stage")),
+        "self_reported_ethnicity": labels(raw.get("self_reported_ethnicity")),
+        "study_journal": canonicalize_facet_value(str(journal)) if journal else "unknown",
+        "cell_type": cell_type,
+        "cell_count": int(raw.get("cell_count") or raw.get("primary_cell_count") or 0),
+        "feature_count": int(raw.get("feature_count") or 0),
+        "published_at": parse_published_at(raw.get("published_at")),
+        "explorer_url": str(raw.get("explorer_url") or ""),
+        "h5ad_url": str(h5ad_url or ""),
+        "search_blob": " | ".join(str(bit) for bit in search_bits if bit),
+    }
+    doc.update(hierarchy or empty_tissue_hierarchy())
+    doc.update(cell_hierarchy or empty_cell_type_hierarchy())
+    return doc
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())

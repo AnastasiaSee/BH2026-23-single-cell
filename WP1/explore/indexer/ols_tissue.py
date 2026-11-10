@@ -2,7 +2,7 @@
 """OLS (EBI) tissue hierarchy helpers with on-disk cache.
 
 Resolves UBERON curies (and best-effort label lookups) to hierarchical
-label paths used as InstantSearch `tissue_hierarchy.lvlN` values.
+label paths used as hierarchy columns `tissue_hierarchy.lvlN` / `tissue_hierarchy_lvlN`.
 """
 
 from __future__ import annotations
