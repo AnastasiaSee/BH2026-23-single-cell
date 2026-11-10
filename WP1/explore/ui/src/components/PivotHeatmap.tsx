@@ -1,19 +1,14 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ResponsiveHeatMap } from "@nivo/heatmap";
 import {
   Alert,
-  ButtonBase,
   CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
 import {
@@ -40,6 +35,29 @@ export const PIVOT_FIELDS: { value: FacetField; label: string }[] = [
 
 const STORAGE_KEY = "scfair-explore-pivot-axes";
 
+const NIVO_THEME = {
+  text: {
+    fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
+    fontSize: 11,
+    fill: "#14212b",
+  },
+  axis: {
+    ticks: {
+      text: {
+        fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
+        fontSize: 11,
+        fill: "#5b6b78",
+      },
+    },
+  },
+  tooltip: {
+    container: {
+      fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
+      fontSize: 12,
+    },
+  },
+} as const;
+
 function loadAxes(): { row: FacetField; col: FacetField } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -59,19 +77,6 @@ function loadAxes(): { row: FacetField; col: FacetField } {
     // ignore
   }
   return { row: "organism", col: "top_organ" };
-}
-
-function cellStyle(count: number, max: number): CSSProperties {
-  if (!count || max <= 0) {
-    return { background: "rgba(255,255,255,0.55)", color: "#5b6b78" };
-  }
-  const t = Math.sqrt(count / max);
-  const alpha = 0.18 + t * 0.72;
-  return {
-    background: `rgba(15, 106, 92, ${alpha.toFixed(3)})`,
-    color: t > 0.55 ? "#f4fffb" : "#14212b",
-    fontWeight: t > 0.35 ? 600 : 500,
-  };
 }
 
 type Props = {
@@ -124,6 +129,27 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
       window.clearTimeout(timer);
     };
   }, [axes, query, facets]);
+
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    return data.rows.map((row, rowIndex) => ({
+      id: row,
+      data: data.cols.map((col, colIndex) => ({
+        x: col,
+        y: data.matrix[rowIndex]?.[colIndex] ?? 0,
+      })),
+    }));
+  }, [data]);
+
+  const chartHeight = useMemo(() => {
+    if (!data) return 360;
+    return Math.min(720, Math.max(320, data.rows.length * 28 + 160));
+  }, [data]);
+
+  const chartMinWidth = useMemo(() => {
+    if (!data) return 480;
+    return Math.max(480, data.cols.length * 36 + 180);
+  }, [data]);
 
   return (
     <Stack spacing={2}>
@@ -181,49 +207,82 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       {data && !loading ? (
-        <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2, maxWidth: "100%", overflowX: "auto" }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell />
-                {data.cols.map((col) => (
-                  <TableCell key={col} title={col} sx={{ whiteSpace: "nowrap" }}>
-                    {col}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.rows.map((row, rowIndex) => (
-                <TableRow key={row}>
-                  <TableCell component="th" scope="row" title={row} sx={{ whiteSpace: "nowrap" }}>
-                    {row}
-                  </TableCell>
-                  {data.cols.map((col, colIndex) => {
-                    const count = data.matrix[rowIndex]?.[colIndex] ?? 0;
-                    return (
-                      <TableCell key={col} padding="none">
-                        <ButtonBase
-                          disabled={!count}
-                          onClick={() => onApplyCell(axes.row, row, axes.col, col)}
-                          sx={{
-                            width: "100%",
-                            minWidth: 44,
-                            py: 1,
-                            px: 0.75,
-                            ...cellStyle(count, data.maxCell),
-                          }}
-                        >
-                          {count || "·"}
-                        </ButtonBase>
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Paper
+          variant="outlined"
+          sx={{ width: "100%", overflow: "auto", bgcolor: "rgba(255,255,255,0.72)" }}
+        >
+          <Stack sx={{ height: chartHeight, minWidth: chartMinWidth }}>
+            <ResponsiveHeatMap
+              data={chartData}
+              margin={{ top: 110, right: 24, bottom: 52, left: 140 }}
+              theme={NIVO_THEME}
+              forceSquare={false}
+              xInnerPadding={0.08}
+              yInnerPadding={0.08}
+              axisTop={{
+                tickSize: 4,
+                tickPadding: 8,
+                tickRotation: -45,
+              }}
+              axisRight={null}
+              axisBottom={null}
+              axisLeft={{
+                tickSize: 4,
+                tickPadding: 8,
+                tickRotation: 0,
+              }}
+              colors={{
+                type: "sequential",
+                colors: ["#e8f2ef", "#0f6a5c"],
+                minValue: 0,
+                maxValue: Math.max(1, data.maxCell),
+              }}
+              emptyColor="#f3f6f4"
+              borderColor={{ from: "color", modifiers: [["darker", 0.15]] }}
+              borderWidth={1}
+              borderRadius={2}
+              enableLabels
+              labelTextColor={{
+                from: "color",
+                modifiers: [["darker", 2.2]],
+              }}
+              hoverTarget="cell"
+              animate={false}
+              isInteractive
+              onClick={(cell) => {
+                if (!cell.value) return;
+                onApplyCell(axes.row, String(cell.serieId), axes.col, String(cell.data.x));
+              }}
+              tooltip={({ cell }) => (
+                <Paper elevation={3} sx={{ px: 1.25, py: 0.75 }}>
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    {cell.serieId} × {String(cell.data.x)}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    {(cell.value ?? 0).toLocaleString()} datasets
+                  </Typography>
+                </Paper>
+              )}
+              legends={[
+                {
+                  anchor: "bottom",
+                  translateX: 0,
+                  translateY: 30,
+                  length: 160,
+                  thickness: 8,
+                  direction: "row",
+                  tickPosition: "after",
+                  tickSize: 3,
+                  tickSpacing: 4,
+                  tickOverlap: false,
+                  title: "Datasets",
+                  titleAlign: "start",
+                  titleOffset: 4,
+                },
+              ]}
+            />
+          </Stack>
+        </Paper>
       ) : null}
     </Stack>
   );
