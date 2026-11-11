@@ -1,77 +1,45 @@
-# Experiment explore stack (Parquet + hyparquet)
+# Explore page: species x factor table
 
-**Client-side Parquet** — no search server, no API keys, no multi‑MB WASM engine.
-
-Catalogs:
-
-- [`WP1/fenix/experiments.json`](../fenix/experiments.json) → `source=scfair`
-- Optional partner JSON via `--json SOURCE=PATH` (additional sources TBD)
+Static page (React + Vite + MUI, Nivo heatmap, [hyparquet](https://github.com/hyparam/hyparquet)) to browse the merged datasets of the WP1 pipeline. It needs no server: the browser loads two Parquet files and computes the filters, counts and ontology roll-up in memory.
 
 | Piece | Role |
 |-------|------|
-| **Python exporter** | Flattens catalogs → `ui/public/experiments.parquet` |
-| **React + Vite + MUI + hyparquet** | MUI widgets; loads Parquet in the browser; search/facets/pivot in memory |
+| [`../scripts/export_explore.py`](../scripts/export_explore.py) | step 6 of the [WP1 pipeline](../README.md): writes `ui/public/datasets.parquet` (one row per dataset) and `ui/public/terms.parquet` (labels and hierarchy of the values) |
+| `ui/src/catalogQuery.ts` | loads the Parquet files; filters, facet counts, pivot counts, roll-up |
+| `ui/src/components/` | filters (`FacetList`), pivot heatmap (`PivotHeatmap`), dataset cards and table |
 
-> Why not DuckDB-WASM? Its `.wasm` is ~34 MiB and dominated cold start (~30s). For a few hundred catalog rows, hyparquet + JS filters is enough.
+## What the page shows
 
-## Prerequisites
+- **Filters** (left): species, tissue, cell type, developmental stage, assay, disease, sex, suspension type, tissue type, resource, flags (merged across resources, several species). Values of a field are combined with OR, fields with AND. Tissue, cell type and stage are trees (composite-metazoan Uberon and CL, `is_a` + `part_of` within the factor domain): the arrow shows the more specific terms, and ticking a term also matches the datasets annotated with any of its descendants. The search box of a tree searches all its terms.
+- **Pivot** (default view): number of datasets for two fields, e.g. species x tissue. For tissue, cell type and stage, each axis is either:
+  - **Raw**: the terms as annotated (after remapping); a dataset annotated with "hippocampal formation" counts only in that column;
+  - **Roll-up**: a dataset also counts for all the more general terms of its annotations (the hippocampal formation dataset also counts for brain, forebrain, ...). The columns are all the terms under the current term (the root at first), at any depth, sorted by number of datasets ("Show top" keeps the first ones). Click an underlined label to show only the terms under it, use the breadcrumb to go back up, or jump to any term. Datasets annotated with the current term itself and nothing more specific are in the column "... (not more specific)": at the root, these are the datasets without annotation.
 
-- Python 3.11+ (Parquet export)
-- Node.js 20+ (UI)
-- Fenix catalog (or partner JSON): `python3 WP1/fenix/download_experiments.py`
+  Terms of the subsets tagged in step 5 of the pipeline (Uberon `non_informative`, `upper_level` and `common_anatomy`, and hand-curated terms; e.g. regional part of brain, organ, material anatomical entity) are hidden in the filter trees and the roll-up columns: their more specific terms are shown instead (they still count, through these). In raw mode, terms annotated to datasets are shown even if they are in these subsets.
 
-## Quick start
+  The axes follow the side filters of their field: with "brain" ticked in the tissue filter, the tissue roll-up starts under brain (the breadcrumb still goes up); with several tissues ticked, the columns are the terms under each of them, merged (e.g. the parts of brain and of heart); in raw mode, and for the fields without hierarchy (e.g. species), only the selected values (and their more specific terms) are shown, not the other annotations of the matching datasets.
 
-```bash
-cd WP1/explore
+  A dataset counts in every row and column it is annotated with: a dataset with two species counts in both species rows, a dataset with five tissues in five columns. Click a cell to list its datasets (it adds filters, exact ones for raw terms).
+- **Cards / Table**: the datasets matching the filters, with links to each resource, the DOI and the H5AD file.
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r indexer/requirements.txt
-python indexer/export_parquet.py
-# → ui/public/experiments.parquet
+The initial view and filters can be set in the URL, with the value ids of the terms file: e.g. `?view=pivot&tissue=UBERON:0000955,UBERON:0000948&organism=NCBITaxon:9606`.
 
-cd ui
-npm install
-npm run dev
-# → http://127.0.0.1:5173
-```
+## Run locally
 
-## Updating the Parquet file with more JSON
+Prerequisite: Node.js 20 or later. From `WP1/`, after steps 1 to 6 of the [pipeline](../README.md):
 
 ```bash
-cd WP1/explore
-source .venv/bin/activate
-
-python indexer/export_parquet.py
-python indexer/export_parquet.py \
-  --json example_partner=/path/to/partner-datasets.json
+cd explore/ui
+npm ci
+npm run dev        # http://localhost:5173, reloads on code changes
+# or the production build:
+npm run build && npm run preview
 ```
 
-Hard-refresh the UI so `/experiments.parquet` reloads.
-
-Partner JSON: `{ "datasets": [ … ] }` (or `{ "data": [ … ] }` / bare array) matching the partner ingest schema.
+After re-running the export, hard-refresh the browser.
 
 ## GitHub Pages
 
-The UI deploys from `WP1/explore/ui` via [`.github/workflows/deploy-explore-pages.yml`](../../.github/workflows/deploy-explore-pages.yml) onto the **`gh-pages`** branch.
+[`.github/workflows/deploy-explore-pages.yml`](../../.github/workflows/deploy-explore-pages.yml) builds `ui/` and pushes it to the `gh-pages` branch on every push to `main` that changes `WP1/explore/ui/` (or by hand: Actions, "Deploy explore UI to GitHub Pages", Run workflow). It does not run the Python export: commit the regenerated Parquet files in `ui/public/`.
 
-- Site: https://amnonkhen.github.io/BH2026-23-single-cell/
-- Build uses `VITE_BASE_PATH=/BH2026-23-single-cell/`
-- Keep `ui/public/experiments.parquet` committed (or regenerate before deploy)
-
-**One-time repo setup:** Settings → Pages → Build and deployment → Source: **Deploy from a branch** → Branch: **`gh-pages`** / `/ (root)` → Save.
-
-After that, every push that changes the UI (or a manual **Actions → Deploy explore UI to GitHub Pages → Run workflow**) refreshes the site.
-
-## Layout
-
-```
-WP1/explore/
-  indexer/
-    catalog.py / export_parquet.py
-  ui/
-    public/experiments.parquet
-    src/catalogQuery.ts          # hyparquet load + in-memory query
-    src/App.tsx
-```
+One-time repository setup: Settings, Pages, Build and deployment, Source "Deploy from a branch", branch `gh-pages`, folder `/ (root)`. The page is then at `https://<owner>.github.io/BH2026-23-single-cell/` (the build uses `VITE_BASE_PATH=/BH2026-23-single-cell/`).

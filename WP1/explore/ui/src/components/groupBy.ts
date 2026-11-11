@@ -1,47 +1,23 @@
+import { FIELD_TITLES, termLabel, type FacetField } from "../catalogQuery";
 import type { ExperimentHit } from "./Hit";
 
-/** Catalog rows are structurally compatible with ExperimentHit. */
-
-export type GroupByField =
-  | "none"
-  | "source"
-  | "organism"
-  | "top_organ"
-  | "tissue"
-  | "assay"
-  | "disease"
-  | "cell_type"
-  | "development_stage"
-  | "suspension_type"
-  | "study_journal";
+export type GroupByField = "none" | FacetField;
 
 export const GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
   { value: "none", label: "None" },
-  { value: "source", label: "Source" },
-  { value: "organism", label: "Organism" },
-  { value: "top_organ", label: "Top organ" },
-  { value: "tissue", label: "Tissue" },
-  { value: "assay", label: "Assay" },
-  { value: "disease", label: "Disease" },
-  { value: "cell_type", label: "Cell type" },
-  { value: "development_stage", label: "Development stage" },
-  { value: "suspension_type", label: "Suspension" },
-  { value: "study_journal", label: "Journal" },
+  ...(
+    [
+      "organism",
+      "tissue",
+      "cell_type",
+      "development_stage",
+      "assay",
+      "disease",
+      "suspension_type",
+      "source",
+    ] as FacetField[]
+  ).map((field) => ({ value: field as GroupByField, label: FIELD_TITLES[field] })),
 ];
-
-const NONE_LABEL = "(none)";
-
-function valuesForField(hit: ExperimentHit, field: Exclude<GroupByField, "none">): string[] {
-  const raw = hit[field];
-  if (Array.isArray(raw)) {
-    const cleaned = [...new Set(raw.map((v) => String(v).trim()).filter(Boolean))];
-    return cleaned.length ? cleaned : [NONE_LABEL];
-  }
-  if (typeof raw === "string" && raw.trim() && raw !== "unknown") {
-    return [raw.trim()];
-  }
-  return [NONE_LABEL];
-}
 
 export type HitGroup = {
   key: string;
@@ -57,23 +33,14 @@ export function groupHits(hits: ExperimentHit[], field: GroupByField): HitGroup[
 
   const buckets = new Map<string, ExperimentHit[]>();
   for (const hit of hits) {
-    for (const value of valuesForField(hit, field)) {
+    for (const value of new Set(hit.values[field])) {
       const list = buckets.get(value);
-      if (list) {
-        if (!list.some((existing) => existing.objectID === hit.objectID)) {
-          list.push(hit);
-        }
-      } else {
-        buckets.set(value, [hit]);
-      }
+      if (list) list.push(hit);
+      else buckets.set(value, [hit]);
     }
   }
 
   return [...buckets.entries()]
-    .map(([key, grouped]) => ({ key, label: key, hits: grouped }))
-    .sort((a, b) => {
-      if (a.key === NONE_LABEL) return 1;
-      if (b.key === NONE_LABEL) return -1;
-      return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
-    });
+    .map(([key, grouped]) => ({ key, label: termLabel(field, key), hits: grouped }))
+    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
 }

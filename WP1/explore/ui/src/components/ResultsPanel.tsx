@@ -19,39 +19,39 @@ import {
   TableRow,
   Tooltip,
   Typography,
-  Chip,
 } from "@mui/material";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
-import type { ExperimentRow, FacetSelection } from "../catalogQuery";
+import {
+  EXACT_PREFIX,
+  FIELD_TITLES,
+  isHierarchical,
+  labelsOf,
+  type ExperimentRow,
+  type FacetField,
+  type FacetSelection,
+} from "../catalogQuery";
 import { EllipsisChip } from "./EllipsisChip";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
-import {
-  AttributeChips,
-  Hit,
-  formatCompactCount,
-  formatSource,
-  hitTitle,
-  type ExperimentHit,
-} from "./Hit";
+import { AttributeChips, Hit, SourceChips, formatCompactCount, hitTitle, type ExperimentHit } from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";
 import type { ResultsView } from "./ViewToggle";
 
-const GROUP_STORAGE_KEY = "scfair-explore-group-by";
-const COLUMNS_STORAGE_KEY = "scfair-explore-table-columns";
-const NONE_LABEL = "(none)";
+const GROUP_STORAGE_KEY = "wp1-explore-group-by";
+const COLUMNS_STORAGE_KEY = "wp1-explore-table-columns";
 
-type TableColumnId =
-  | "title"
-  | "source"
-  | "organism"
-  | "top_organ"
-  | "assay"
-  | "disease"
-  | "cell_type"
-  | "development_stage"
-  | "cells";
+type TableColumnId = "title" | "source" | "cells" | FacetField;
 
 const TABLE_CHIP_MAX = 72;
+
+const FIELD_COLUMNS: FacetField[] = [
+  "organism",
+  "tissue",
+  "cell_type",
+  "development_stage",
+  "assay",
+  "disease",
+  "suspension_type",
+];
 
 const TABLE_COLUMNS: {
   id: TableColumnId;
@@ -61,41 +61,21 @@ const TABLE_COLUMNS: {
   required?: boolean;
 }[] = [
   { id: "title", label: "Title", required: true },
-  { id: "source", label: "Source", width: 76 },
-  { id: "organism", label: "Organism", width: 96 },
-  { id: "top_organ", label: "Top organ", width: 96 },
-  { id: "assay", label: "Assay", width: 96 },
-  { id: "disease", label: "Disease", width: 96 },
-  { id: "cell_type", label: "Cell type", width: 108 },
-  { id: "development_stage", label: "Dev. stage", width: 96 },
-  { id: "cells", label: "Cells", width: 56 },
+  { id: "source", label: "Resource", width: 96 },
+  ...FIELD_COLUMNS.map((field) => ({ id: field as TableColumnId, label: FIELD_TITLES[field], width: 108 })),
+  { id: "cells", label: "Cells", width: 76 },
 ];
 
-const DEFAULT_COLUMNS: TableColumnId[] = ["title", "organism", "cell_type", "cells"];
-
-const PREVIOUS_DEFAULTS: TableColumnId[][] = [
-  ["title"],
-  ["title", "organism", "cell_type"],
-];
-
-function sameColumns(a: string[], b: TableColumnId[]): boolean {
-  return a.length === b.length && a.every((id, index) => id === b[index]);
-}
+const DEFAULT_COLUMNS: TableColumnId[] = ["title", "source", "organism", "tissue", "cell_type", "cells"];
 
 function columnCellSx(col: (typeof TABLE_COLUMNS)[number]) {
   return {
-    width: col.width,
-    maxWidth: col.width,
+    width: col.width ?? "auto",
+    maxWidth: col.width ?? "none",
     whiteSpace: "nowrap" as const,
     overflow: "hidden",
     textOverflow: "ellipsis",
     verticalAlign: "middle",
-    ...(col.width
-      ? {}
-      : {
-          width: "auto",
-          maxWidth: "none",
-        }),
   };
 }
 
@@ -111,23 +91,9 @@ function TruncatedCell({
   align?: "left" | "right";
 }) {
   return (
-    <TableCell
-      align={align}
-      sx={{
-        width: width ?? "auto",
-        maxWidth: width,
-        whiteSpace: "nowrap",
-        verticalAlign: "middle",
-      }}
-    >
+    <TableCell align={align} sx={{ width: width ?? "auto", maxWidth: width, whiteSpace: "nowrap", verticalAlign: "middle" }}>
       <Tooltip title={text} enterDelay={400}>
-        <Typography
-          component="span"
-          display="block"
-          noWrap
-          variant="inherit"
-          sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
-        >
+        <Typography component="span" display="block" noWrap variant="inherit" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
           {children ?? text}
         </Typography>
       </Tooltip>
@@ -138,9 +104,7 @@ function TruncatedCell({
 function loadStoredGroupBy(): GroupByField {
   try {
     const value = localStorage.getItem(GROUP_STORAGE_KEY);
-    if (GROUP_BY_OPTIONS.some((option) => option.value === value)) {
-      return value as GroupByField;
-    }
+    if (GROUP_BY_OPTIONS.some((option) => option.value === value)) return value as GroupByField;
   } catch {
     // ignore
   }
@@ -149,30 +113,18 @@ function loadStoredGroupBy(): GroupByField {
 
 function loadStoredColumns(): TableColumnId[] {
   try {
-    const raw = localStorage.getItem(COLUMNS_STORAGE_KEY);
-    if (!raw) return DEFAULT_COLUMNS;
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(localStorage.getItem(COLUMNS_STORAGE_KEY) ?? "null") as unknown;
     if (!Array.isArray(parsed)) return DEFAULT_COLUMNS;
-    // Upgrade prior stock defaults to the current default set.
-    if (PREVIOUS_DEFAULTS.some((prev) => sameColumns(parsed.map(String), prev))) {
-      return DEFAULT_COLUMNS;
-    }
-    const valid = parsed.filter((id): id is TableColumnId =>
-      TABLE_COLUMNS.some((col) => col.id === id)
-    );
+    const valid = parsed.filter((id): id is TableColumnId => TABLE_COLUMNS.some((col) => col.id === id));
     if (!valid.includes("title")) valid.unshift("title");
-    return valid.length ? valid : DEFAULT_COLUMNS;
+    return valid;
   } catch {
     return DEFAULT_COLUMNS;
   }
 }
 
 function groupDomId(key: string): string {
-  const slug = key
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
+  const slug = key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
   return `group-section-${slug || "none"}`;
 }
 
@@ -182,124 +134,63 @@ type Props = {
   query: string;
   facets: FacetSelection;
   onOpenHits: () => void;
-  onApplyFacet: (field: string, value: string) => void;
+  onApplyFacet: (field: FacetField, value: string) => void;
 };
 
-function ChipCell({
-  width,
-  children,
-}: {
-  width: number;
-  children: ReactNode;
-}) {
+function ChipCell({ width, children }: { width: number; children: ReactNode }) {
   return (
-    <TableCell
-      sx={{
-        width,
-        maxWidth: width,
-        whiteSpace: "nowrap",
-        verticalAlign: "middle",
-        overflow: "hidden",
-        px: 0.75,
-      }}
-    >
+    <TableCell sx={{ width, maxWidth: width, whiteSpace: "nowrap", verticalAlign: "middle", overflow: "hidden", px: 0.75 }}>
       {children}
     </TableCell>
   );
 }
 
-function HitRow({
-  hit,
-  visible,
-}: {
-  hit: ExperimentHit;
-  visible: Set<TableColumnId>;
-}) {
+function HitRow({ hit, columns }: { hit: ExperimentHit; columns: typeof TABLE_COLUMNS }) {
   const title = hitTitle(hit);
-  const cellCount = hit.cell_count ?? 0;
-  const cellsLabel = formatCompactCount(cellCount);
-  const cellsTooltip = cellCount.toLocaleString();
-  const titleTooltip =
-    hit.study_journal && hit.study_journal !== "unknown"
-      ? `${title} · ${hit.study_journal}`
-      : title;
-  const col = (id: TableColumnId) => TABLE_COLUMNS.find((item) => item.id === id)!;
-
   return (
     <TableRow hover>
-      {visible.has("title") ? (
-        <TruncatedCell text={titleTooltip}>
-          {hit.explorer_url ? (
-            <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
-              {title}
-            </Link>
-          ) : (
-            title
-          )}
-        </TruncatedCell>
-      ) : null}
-      {visible.has("source") ? (
-        <ChipCell width={col("source").width!}>
-          {hit.source ? (
-            <Chip size="small" color="primary" label={formatSource(hit.source)} sx={{ maxWidth: TABLE_CHIP_MAX }} />
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              —
-            </Typography>
-          )}
-        </ChipCell>
-      ) : null}
-      {visible.has("organism") ? (
-        <ChipCell width={col("organism").width!}>
-          <AttributeChips values={hit.organism} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
-        </ChipCell>
-      ) : null}
-      {visible.has("top_organ") ? (
-        <ChipCell width={col("top_organ").width!}>
-          <AttributeChips values={hit.top_organ} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
-        </ChipCell>
-      ) : null}
-      {visible.has("assay") ? (
-        <ChipCell width={col("assay").width!}>
-          <AttributeChips values={hit.assay} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
-        </ChipCell>
-      ) : null}
-      {visible.has("disease") ? (
-        <ChipCell width={col("disease").width!}>
-          <AttributeChips values={hit.disease} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
-        </ChipCell>
-      ) : null}
-      {visible.has("cell_type") ? (
-        <ChipCell width={col("cell_type").width!}>
-          <AttributeChips values={hit.cell_type} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
-        </ChipCell>
-      ) : null}
-      {visible.has("development_stage") ? (
-        <ChipCell width={col("development_stage").width!}>
-          <AttributeChips
-            values={hit.development_stage}
-            chipMaxWidth={TABLE_CHIP_MAX}
-            wrap={false}
-          />
-        </ChipCell>
-      ) : null}
-      {visible.has("cells") ? (
-        <TruncatedCell text={cellsTooltip} width={col("cells").width} align="right">
-          {cellsLabel}
-        </TruncatedCell>
-      ) : null}
+      {columns.map((col) => {
+        if (col.id === "title") {
+          return (
+            <TruncatedCell key={col.id} text={hit.doi_label ? `${title} · ${hit.doi_label}` : title}>
+              {hit.explorer_url ? (
+                <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
+                  {title}
+                </Link>
+              ) : (
+                title
+              )}
+            </TruncatedCell>
+          );
+        }
+        if (col.id === "source") {
+          return (
+            <ChipCell key={col.id} width={col.width!}>
+              <Stack direction="row" gap={0.5} sx={{ overflow: "hidden" }}>
+                <SourceChips hit={hit} />
+              </Stack>
+            </ChipCell>
+          );
+        }
+        if (col.id === "cells") {
+          return (
+            <TruncatedCell key={col.id} text={hit.cell_count.toLocaleString()} width={col.width} align="right">
+              {formatCompactCount(hit.cell_count)}
+            </TruncatedCell>
+          );
+        }
+        const field = col.id as FacetField;
+        return (
+          <ChipCell key={col.id} width={col.width!}>
+            <AttributeChips values={labelsOf(field, hit.values[field])} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
+          </ChipCell>
+        );
+      })}
     </TableRow>
   );
 }
 
-export function ResultsPanel({
-  view,
-  rows,
-  query,
-  facets,
-  onOpenHits,
-  onApplyFacet,
-}: Props) {
+export function ResultsPanel({ view, rows, query, facets, onOpenHits, onApplyFacet }: Props) {
   const [groupBy, setGroupBy] = useState<GroupByField>(() => loadStoredGroupBy());
   const [columns, setColumns] = useState<TableColumnId[]>(() => loadStoredColumns());
   const [activeChip, setActiveChip] = useState<string | null>(null);
@@ -322,49 +213,28 @@ export function ResultsPanel({
     }
   }, [columns]);
 
-  const visibleColumns = useMemo(
-    () => TABLE_COLUMNS.filter((col) => columns.includes(col.id)),
-    [columns]
-  );
-  const visibleIds = useMemo(() => new Set(columns), [columns]);
+  const visibleColumns = useMemo(() => TABLE_COLUMNS.filter((col) => columns.includes(col.id)), [columns]);
 
-  const groups = useMemo(
-    () => (view === "table" ? groupHits(rows, groupBy) : []),
-    [view, rows, groupBy]
-  );
+  const groups = useMemo(() => (view === "table" ? groupHits(rows, groupBy) : []), [view, rows, groupBy]);
 
   const topGroups = useMemo(() => {
     if (groupBy === "none") return [];
     return [...groups]
-      .sort((a, b) => {
-        const byCount = b.hits.length - a.hits.length;
-        if (byCount !== 0) return byCount;
-        return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
-      })
+      .sort((a, b) => b.hits.length - a.hits.length || a.label.localeCompare(b.label, undefined, { sensitivity: "base" }))
       .slice(0, 10);
   }, [groups, groupBy]);
 
-  const focusGroup = (key: string, label: string) => {
+  const focusGroup = (key: string) => {
     setActiveChip(key);
-    if (groupBy === "none" || label === NONE_LABEL) return;
-    onApplyFacet(groupBy, label);
-    const el = document.getElementById(groupDomId(key));
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (groupBy === "none") return;
+    // Groups are the annotated values: filter on exactly that term, not its descendants.
+    onApplyFacet(groupBy, isHierarchical(groupBy) ? EXACT_PREFIX + key : key);
+    document.getElementById(groupDomId(key))?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const toggleColumn = (id: TableColumnId) => {
     if (id === "title") return;
-    setColumns((prev) =>
-      prev.includes(id) ? prev.filter((col) => col !== id) : [...prev, id]
-    );
-  };
-
-  const openColumnsMenu = (event: MouseEvent<HTMLElement>) => {
-    setColumnsMenuAnchor(event.currentTarget);
-  };
-
-  const closeColumnsMenu = () => {
-    setColumnsMenuAnchor(null);
+    setColumns((prev) => (prev.includes(id) ? prev.filter((col) => col !== id) : [...prev, id]));
   };
 
   if (view === "pivot") {
@@ -373,9 +243,8 @@ export function ResultsPanel({
         query={query}
         facets={facets}
         onOpenHits={onOpenHits}
-        onApplyCell={(rowField, rowValue, colField, colValue) => {
-          onApplyFacet(rowField, rowValue);
-          onApplyFacet(colField, colValue);
+        onApplyCell={(cells) => {
+          for (const { field, value } of cells) onApplyFacet(field, value);
           onOpenHits();
         }}
       />
@@ -391,15 +260,8 @@ export function ResultsPanel({
         gap={1.25}
         sx={{
           "& > *": {
-            flex: {
-              xs: "1 1 100%",
-              sm: "1 1 calc(50% - 10px)",
-              lg: "1 1 calc(33.333% - 12px)",
-            },
-            maxWidth: {
-              sm: "calc(50% - 10px)",
-              lg: "calc(33.333% - 12px)",
-            },
+            flex: { xs: "1 1 100%", sm: "1 1 calc(50% - 10px)", lg: "1 1 calc(33.333% - 12px)" },
+            maxWidth: { sm: "calc(50% - 10px)", lg: "calc(33.333% - 12px)" },
           },
         }}
       >
@@ -412,13 +274,7 @@ export function ResultsPanel({
 
   return (
     <Stack spacing={2}>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.5}
-        alignItems={{ sm: "center" }}
-        flexWrap="wrap"
-        useFlexGap
-      >
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel id="group-by-label">Group by</InputLabel>
           <Select
@@ -442,7 +298,7 @@ export function ResultsPanel({
           aria-haspopup="menu"
           aria-expanded={Boolean(columnsMenuAnchor)}
           aria-controls={columnsMenuAnchor ? "table-columns-menu" : undefined}
-          onClick={openColumnsMenu}
+          onClick={(event: MouseEvent<HTMLElement>) => setColumnsMenuAnchor(event.currentTarget)}
         >
           Columns
         </Button>
@@ -450,33 +306,25 @@ export function ResultsPanel({
           id="table-columns-menu"
           anchorEl={columnsMenuAnchor}
           open={Boolean(columnsMenuAnchor)}
-          onClose={closeColumnsMenu}
+          onClose={() => setColumnsMenuAnchor(null)}
           anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
           transformOrigin={{ vertical: "top", horizontal: "left" }}
         >
-          {TABLE_COLUMNS.map((col) => {
-            const checked = columns.includes(col.id);
-            return (
-              <MenuItem
-                key={col.id}
-                dense
-                disabled={col.required}
-                onClick={() => toggleColumn(col.id)}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <Checkbox
-                    edge="start"
-                    size="small"
-                    tabIndex={-1}
-                    disableRipple
-                    checked={checked}
-                    disabled={col.required}
-                  />
-                </ListItemIcon>
-                <ListItemText primary={col.label} />
-              </MenuItem>
-            );
-          })}
+          {TABLE_COLUMNS.map((col) => (
+            <MenuItem key={col.id} dense disabled={col.required} onClick={() => toggleColumn(col.id)}>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <Checkbox
+                  edge="start"
+                  size="small"
+                  tabIndex={-1}
+                  disableRipple
+                  checked={columns.includes(col.id)}
+                  disabled={col.required}
+                />
+              </ListItemIcon>
+              <ListItemText primary={col.label} />
+            </MenuItem>
+          ))}
         </Menu>
 
         {topGroups.length ? (
@@ -488,7 +336,7 @@ export function ResultsPanel({
                 color={activeChip === group.key ? "primary" : "default"}
                 label={`${group.label} (${group.hits.length})`}
                 maxWidth={200}
-                onClick={() => focusGroup(group.key, group.label)}
+                onClick={() => focusGroup(group.key)}
               />
             ))}
           </Stack>
@@ -510,11 +358,7 @@ export function ResultsPanel({
               <TableHead>
                 <TableRow>
                   {visibleColumns.map((col) => (
-                    <TableCell
-                      key={col.id}
-                      align={col.id === "cells" ? "right" : "left"}
-                      sx={columnCellSx(col)}
-                    >
+                    <TableCell key={col.id} align={col.id === "cells" ? "right" : "left"} sx={columnCellSx(col)}>
                       {col.label}
                     </TableCell>
                   ))}
@@ -522,11 +366,7 @@ export function ResultsPanel({
               </TableHead>
               <TableBody>
                 {group.hits.map((hit) => (
-                  <HitRow
-                    key={`${group.key}-${hit.objectID}`}
-                    hit={hit}
-                    visible={visibleIds}
-                  />
+                  <HitRow key={`${group.key}-${hit.objectID}`} hit={hit} columns={visibleColumns} />
                 ))}
               </TableBody>
             </Table>

@@ -1,61 +1,58 @@
 import { useEffect, useMemo, useState } from "react";
-import { ResponsiveHeatMap } from "@nivo/heatmap";
+import { HeatMap } from "@nivo/heatmap";
+import type { AxisTickProps } from "@nivo/axes";
 import {
   Alert,
+  Autocomplete,
+  Breadcrumbs,
   CircularProgress,
   FormControl,
   InputLabel,
+  Link,
   MenuItem,
   Paper,
   Select,
   Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import {
+  visibleValues,
+  pathTo,
+  stripExact,
+  SELECTED_NODE,
+  EXACT_PREFIX,
+  FACET_FIELDS,
+  FIELD_TITLES,
+  SELF_PREFIX,
+  childrenOf,
+  isHierarchical,
   pivotCounts,
+  rootsOf,
+  termLabel,
   type FacetField,
   type FacetSelection,
+  type HierarchicalField,
   type PivotResult,
 } from "../catalogQuery";
 
-export const PIVOT_FIELDS: { value: FacetField; label: string }[] = [
-  { value: "source", label: "Source" },
-  { value: "organism", label: "Organism" },
-  { value: "top_organ", label: "Top organ" },
-  { value: "tissue", label: "Tissue" },
-  { value: "tissue_type", label: "Tissue type" },
-  { value: "assay", label: "Assay" },
-  { value: "disease", label: "Disease" },
-  { value: "cell_type", label: "Cell type" },
-  { value: "development_stage", label: "Development stage" },
-  { value: "suspension_type", label: "Suspension" },
-  { value: "sex", label: "Sex" },
-  { value: "study_journal", label: "Journal" },
-];
+const STORAGE_KEY = "wp1-explore-pivot-axes";
+const TOP_OPTIONS = [15, 30, 60, 120];
+const MAX_LABEL = 34;
 
-const STORAGE_KEY = "scfair-explore-pivot-axes";
+/** Axis state: field; for hierarchical fields, roll-up on/off and the drill-down path. */
+type AxisState = { field: FacetField; rollup: boolean; path: string[] };
 
 const NIVO_THEME = {
-  text: {
-    fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
-    fontSize: 11,
-    fill: "#14212b",
-  },
+  text: { fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif', fontSize: 11, fill: "#14212b" },
   axis: {
     ticks: {
-      text: {
-        fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
-        fontSize: 11,
-        fill: "#5b6b78",
-      },
+      text: { fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif', fontSize: 11, fill: "#5b6b78" },
     },
   },
-  tooltip: {
-    container: {
-      fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
-      fontSize: 12,
-    },
-  },
+  tooltip: { container: { fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif', fontSize: 12 } },
 } as const;
 
 const LABEL_ON_LIGHT = "#14212b";
@@ -68,18 +65,10 @@ function contrastingLabelColor(background: string): string {
   let b = 0;
   const rgb = background.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
   if (rgb) {
-    r = Number(rgb[1]);
-    g = Number(rgb[2]);
-    b = Number(rgb[3]);
+    [r, g, b] = [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
   } else {
     const hex = background.replace("#", "").trim();
-    const full =
-      hex.length === 3
-        ? hex
-            .split("")
-            .map((ch) => ch + ch)
-            .join("")
-        : hex;
+    const full = hex.length === 3 ? hex.split("").map((ch) => ch + ch).join("") : hex;
     if (full.length >= 6) {
       r = Number.parseInt(full.slice(0, 2), 16);
       g = Number.parseInt(full.slice(2, 4), 16);
@@ -94,48 +83,279 @@ function contrastingLabelColor(background: string): string {
   return luminance > 0.42 ? LABEL_ON_LIGHT : LABEL_ON_DARK;
 }
 
-function loadAxes(): { row: FacetField; col: FacetField } {
+/**
+ * Where the roll-up of a field starts, given the filter selection on that field: the root
+ * without selection, the selected term if one, the selected terms (SELECTED_NODE) if several.
+ */
+function startPath(field: FacetField, scope: string[]): string[] {
+  if (!isHierarchical(field)) return [];
+  const ids = [...new Set(scope.map(stripExact))];
+  if (!ids.length) return rootsOf(field).slice(0, 1);
+  return ids.length === 1 ? pathTo(field, ids[0]) : [SELECTED_NODE];
+}
+
+/** path [] = start from the filter selection (see startPath). */
+function newAxis(field: FacetField, rollup: boolean): AxisState {
+  return { field, rollup: rollup && isHierarchical(field), path: [] };
+}
+
+function loadAxes(): { row: AxisState; col: AxisState } {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { row?: string; col?: string };
-      if (
-        parsed.row &&
-        parsed.col &&
-        parsed.row !== parsed.col &&
-        PIVOT_FIELDS.some((f) => f.value === parsed.row) &&
-        PIVOT_FIELDS.some((f) => f.value === parsed.col)
-      ) {
-        return { row: parsed.row as FacetField, col: parsed.col as FacetField };
-      }
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as {
+      row?: { field?: string; rollup?: boolean };
+      col?: { field?: string; rollup?: boolean };
+    } | null;
+    const ok = (f?: string): f is FacetField => (FACET_FIELDS as readonly string[]).includes(f ?? "");
+    if (parsed && ok(parsed.row?.field) && ok(parsed.col?.field)) {
+      return {
+        row: newAxis(parsed.row!.field as FacetField, Boolean(parsed.row!.rollup)),
+        col: newAxis(parsed.col!.field as FacetField, Boolean(parsed.col!.rollup)),
+      };
     }
   } catch {
     // ignore
   }
-  return { row: "organism", col: "top_organ" };
+  return { row: newAxis("organism", false), col: newAxis("tissue", true) };
+}
+
+function shorten(text: string): string {
+  return text.length > MAX_LABEL ? `${text.slice(0, MAX_LABEL - 1)}…` : text;
+}
+
+const CELL_WIDTH = 46;
+const CELL_HEIGHT = 28;
+const CHART_SIDE = 12;
+
+/** Row labels as HTML, pinned on the left while the heatmap scrolls horizontally. */
+function RowLabels({
+  rows,
+  totals,
+  field,
+  width,
+  top,
+  height,
+  canDrill,
+  onDrill,
+}: {
+  rows: string[];
+  totals: number[];
+  field: FacetField;
+  width: number;
+  top: number;
+  height: number;
+  canDrill: (value: string) => boolean;
+  onDrill: (value: string) => void;
+}) {
+  return (
+    <Stack
+      sx={{
+        position: "sticky",
+        left: 0,
+        zIndex: 1,
+        flexShrink: 0,
+        width,
+        height,
+        pt: `${top}px`,
+        bgcolor: "rgba(255,255,255,0.96)",
+        borderRight: 1,
+        borderColor: "divider",
+      }}
+    >
+      {rows.map((value, i) => {
+        const label = termLabel(field, value);
+        const clickable = canDrill(value);
+        const id = value.startsWith(SELF_PREFIX) ? value.slice(SELF_PREFIX.length) : value;
+        return (
+          <Typography
+            key={value}
+            variant="caption"
+            noWrap
+            title={`${label} (${id}): ${(totals[i] ?? 0).toLocaleString()} datasets${clickable ? " · click to show only the terms under it" : ""}`}
+            onClick={clickable ? () => onDrill(value) : undefined}
+            sx={{
+              height: CELL_HEIGHT,
+              lineHeight: `${CELL_HEIGHT}px`,
+              textAlign: "right",
+              pr: 1,
+              pl: 1,
+              color: clickable ? "primary.main" : "text.secondary",
+              textDecoration: clickable ? "underline" : undefined,
+              cursor: clickable ? "pointer" : "default",
+            }}
+          >
+            {shorten(label)}
+          </Typography>
+        );
+      })}
+    </Stack>
+  );
 }
 
 type Props = {
   query: string;
   facets: FacetSelection;
   onOpenHits: () => void;
-  onApplyCell: (
-    rowField: FacetField,
-    rowValue: string,
-    colField: FacetField,
-    colValue: string
-  ) => void;
+  onApplyCell: (cells: { field: FacetField; value: string }[]) => void;
 };
+
+function AxisControls({
+  id,
+  title,
+  axis,
+  onChange,
+}: {
+  id: string;
+  title: string;
+  axis: AxisState;
+  onChange: (axis: AxisState) => void;
+}) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      <FormControl size="small" sx={{ minWidth: 170 }}>
+        <InputLabel id={`${id}-label`}>{title}</InputLabel>
+        <Select
+          labelId={`${id}-label`}
+          label={title}
+          value={axis.field}
+          onChange={(event) => onChange(newAxis(event.target.value as FacetField, axis.rollup))}
+        >
+          {FACET_FIELDS.map((field) => (
+            <MenuItem key={field} value={field}>
+              {FIELD_TITLES[field]}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      {isHierarchical(axis.field) ? (
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          color="primary"
+          value={axis.rollup ? "rollup" : "raw"}
+          onChange={(_, next: string | null) => {
+            if (next) onChange({ ...axis, rollup: next === "rollup", path: [] });
+          }}
+        >
+          <ToggleButton value="raw" title="Terms as annotated (after remapping)">
+            Raw
+          </ToggleButton>
+          <ToggleButton value="rollup" title="Ontology roll-up: all terms under the current term, each counting the datasets annotated with it or with a more specific term">
+            Roll-up
+          </ToggleButton>
+        </ToggleButtonGroup>
+      ) : null}
+    </Stack>
+  );
+}
+
+function AxisBreadcrumbs({
+  title,
+  axis,
+  path,
+  scope,
+  onChange,
+}: {
+  title: string;
+  axis: AxisState;
+  /** Current roll-up path (the axis path, or the start from the filter selection). */
+  path: string[];
+  /** Filter selection on the field (named in the breadcrumb when several terms are selected). */
+  scope: string[];
+  onChange: (axis: AxisState) => void;
+}) {
+  const field = axis.field;
+  const crumb = (id: string) =>
+    id === SELECTED_NODE ? scope.map((s) => termLabel(field, s)).join(" + ") : termLabel(field, id);
+  const options = useMemo(
+    () =>
+      isHierarchical(field)
+        ? visibleValues(field)
+            .filter((id) => childrenOf(field, id).length > 0)
+            .sort((a, b) => termLabel(field, a).localeCompare(termLabel(field, b)))
+        : [],
+    [field]
+  );
+  if (!axis.rollup || !isHierarchical(field)) return null;
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+      <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+        {title}: under
+      </Typography>
+      <Breadcrumbs maxItems={6} sx={{ fontSize: "0.875rem" }}>
+        {path.map((id, i) =>
+          i === path.length - 1 ? (
+            <Typography key={id} variant="body2" color="text.primary" fontWeight={600}>
+              {crumb(id)}
+            </Typography>
+          ) : (
+            <Link
+              key={id}
+              component="button"
+              variant="body2"
+              onClick={() => onChange({ ...axis, path: path.slice(0, i + 1) })}
+            >
+              {crumb(id)}
+            </Link>
+          )
+        )}
+      </Breadcrumbs>
+      <Autocomplete
+        size="small"
+        sx={{ width: 280 }}
+        options={options}
+        value={null}
+        blurOnSelect
+        clearOnBlur
+        getOptionLabel={(id) => termLabel(field, id)}
+        renderOption={(props, id) => (
+          <li {...props} key={id}>
+            <Typography variant="body2">
+              {termLabel(field, id)}{" "}
+              <Typography component="span" variant="caption" color="text.secondary">
+                {id}
+              </Typography>
+            </Typography>
+          </li>
+        )}
+        onChange={(_, id) => {
+          if (id) onChange({ ...axis, path: pathTo(field, id) });
+        }}
+        renderInput={(params) => <TextField {...params} placeholder="Jump to a term…" />}
+      />
+    </Stack>
+  );
+}
 
 export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
   const [axes, setAxes] = useState(loadAxes);
+  const [top, setTop] = useState(30);
   const [data, setData] = useState<PivotResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Filter selection on the field of each axis: the axis shows only these values (and their
+  // descendants), and the roll-up starts from them. A new selection resets the drill-down.
+  const rowScope = useMemo(() => [...new Set(facets[axes.row.field] ?? [])], [facets, axes.row.field]);
+  const colScope = useMemo(() => [...new Set(facets[axes.col.field] ?? [])], [facets, axes.col.field]);
+  const rowScopeKey = rowScope.join("\n");
+  const colScopeKey = colScope.join("\n");
+  useEffect(() => {
+    setAxes((prev) => (prev.row.path.length ? { ...prev, row: { ...prev.row, path: [] } } : prev));
+  }, [rowScopeKey]);
+  useEffect(() => {
+    setAxes((prev) => (prev.col.path.length ? { ...prev, col: { ...prev.col, path: [] } } : prev));
+  }, [colScopeKey]);
+
+  const rowPath = axes.row.path.length ? axes.row.path : startPath(axes.row.field, rowScope);
+  const colPath = axes.col.path.length ? axes.col.path : startPath(axes.col.field, colScope);
+  const pathOf = (which: "row" | "col") => (which === "row" ? rowPath : colPath);
+  const rowNode = axes.row.rollup ? rowPath[rowPath.length - 1] ?? null : null;
+  const colNode = axes.col.rollup ? colPath[colPath.length - 1] ?? null : null;
+
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(axes));
+      const keep = (a: AxisState) => ({ field: a.field, rollup: a.rollup });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ row: keep(axes.row), col: keep(axes.col) }));
     } catch {
       // ignore
     }
@@ -146,7 +366,13 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
     setLoading(true);
     setError(null);
     const timer = window.setTimeout(() => {
-      pivotCounts(axes.row, axes.col, query, facets)
+      pivotCounts(
+        { field: axes.row.field, node: rowNode, scope: rowScope },
+        { field: axes.col.field, node: colNode, scope: colScope },
+        query,
+        facets,
+        { maxRows: top, maxCols: top }
+      )
         .then((result) => {
           if (!cancelled) {
             setData(result);
@@ -164,73 +390,107 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [axes, query, facets]);
+  }, [axes.row.field, axes.col.field, rowNode, colNode, rowScope, colScope, query, facets, top]);
 
   const chartData = useMemo(() => {
     if (!data) return [];
     return data.rows.map((row, rowIndex) => ({
       id: row,
-      data: data.cols.map((col, colIndex) => ({
-        x: col,
-        y: data.matrix[rowIndex]?.[colIndex] ?? 0,
-      })),
+      data: data.cols.map((col, colIndex) => ({ x: col, y: data.matrix[rowIndex]?.[colIndex] ?? 0 })),
     }));
   }, [data]);
 
-  const chartHeight = useMemo(() => {
-    if (!data) return 360;
-    return Math.min(720, Math.max(320, data.rows.length * 28 + 160));
-  }, [data]);
+  /** A value can be drilled into if its axis is rolled up and it has children. */
+  const canDrill = (axis: AxisState, value: string) =>
+    axis.rollup &&
+    isHierarchical(axis.field) &&
+    !value.startsWith(SELF_PREFIX) &&
+    !value.startsWith(EXACT_PREFIX) &&
+    childrenOf(axis.field as HierarchicalField, value).length > 0;
 
-  const chartMinWidth = useMemo(() => {
-    if (!data) return 480;
-    return Math.max(480, data.cols.length * 36 + 180);
-  }, [data]);
+  const drill = (which: "row" | "col", value: string) =>
+    setAxes((prev) => ({ ...prev, [which]: { ...prev[which], path: [...pathOf(which), value] } }));
+
+  const tickRenderer = (which: "row" | "col") => {
+    const axis = axes[which];
+    const totals = data ? (which === "row" ? data.rowTotals : data.colTotals) : [];
+    const order = data ? (which === "row" ? data.rows : data.cols) : [];
+    return (tick: AxisTickProps<string>) => {
+      const value = String(tick.value);
+      const label = termLabel(axis.field, value);
+      const clickable = canDrill(axis, value);
+      const total = totals[order.indexOf(value)] ?? 0;
+      return (
+        <g transform={`translate(${tick.x},${tick.y})`}>
+          <line x1={0} x2={tick.lineX} y1={0} y2={tick.lineY} stroke="#b8c4cc" />
+          <text
+            transform={`translate(${tick.textX},${tick.textY}) rotate(${tick.rotate ?? 0})`}
+            textAnchor={tick.textAnchor as "start" | "middle" | "end"}
+            dominantBaseline={tick.textBaseline as "central"}
+            onClick={clickable ? () => drill(which, value) : undefined}
+            style={{
+              fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
+              fontSize: 11,
+              fill: clickable ? "#0f6a5c" : "#5b6b78",
+              textDecoration: clickable ? "underline" : undefined,
+              cursor: clickable ? "pointer" : "default",
+            }}
+          >
+            <title>
+              {`${label} (${value.startsWith(SELF_PREFIX) ? value.slice(SELF_PREFIX.length) : value}): ${total.toLocaleString()} datasets`}
+              {clickable ? " · click to show only the terms under it" : ""}
+            </title>
+            {shorten(label)}
+          </text>
+        </g>
+      );
+    };
+  };
+
+  const longest = (values: string[], field: FacetField) =>
+    Math.max(4, ...values.map((v) => Math.min(MAX_LABEL, termLabel(field, v).length)));
+  // Fixed cell size: the table keeps its size and scrolls horizontally; row labels are an
+  // HTML column pinned on the left (sticky), aligned with the rows of the heatmap.
+  const labelWidth = data ? Math.min(260, 24 + longest(data.rows, axes.row.field) * 6.6) : 140;
+  const marginTop = data ? Math.min(200, 30 + longest(data.cols, axes.col.field) * 4.6) : 110;
+  const marginBottom = 56;
+  const chartWidth = data ? Math.max(300, data.cols.length * CELL_WIDTH + 2 * CHART_SIDE) : 300;
+  const chartHeight = data ? data.rows.length * CELL_HEIGHT + marginTop + marginBottom : 360;
+
+  const setAxis = (which: "row" | "col") => (axis: AxisState) =>
+    setAxes((prev) => ({ ...prev, [which]: axis }));
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }}>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="pivot-rows-label">Rows</InputLabel>
+    <Stack spacing={1.5}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} flexWrap="wrap" useFlexGap>
+        <AxisControls id="pivot-rows" title="Rows" axis={axes.row} onChange={setAxis("row")} />
+        <AxisControls id="pivot-cols" title="Columns" axis={axes.col} onChange={setAxis("col")} />
+        <FormControl size="small" sx={{ minWidth: 110 }}>
+          <InputLabel id="pivot-top-label">Show top</InputLabel>
           <Select
-            labelId="pivot-rows-label"
-            label="Rows"
-            value={axes.row}
-            onChange={(event) =>
-              setAxes((prev) => ({ ...prev, row: event.target.value as FacetField }))
-            }
+            labelId="pivot-top-label"
+            label="Show top"
+            value={top}
+            onChange={(event) => setTop(Number(event.target.value))}
           >
-            {PIVOT_FIELDS.map((field) => (
-              <MenuItem key={field.value} value={field.value}>
-                {field.label}
+            {TOP_OPTIONS.map((n) => (
+              <MenuItem key={n} value={n}>
+                {n}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="pivot-cols-label">Columns</InputLabel>
-          <Select
-            labelId="pivot-cols-label"
-            label="Columns"
-            value={axes.col}
-            onChange={(event) =>
-              setAxes((prev) => ({ ...prev, col: event.target.value as FacetField }))
-            }
-          >
-            {PIVOT_FIELDS.map((field) => (
-              <MenuItem key={field.value} value={field.value}>
-                {field.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {data ? (
-          <Typography variant="body2" color="text.secondary">
-            {data.found.toLocaleString()} datasets in filter · click a cell to open matching
-            hits
-          </Typography>
-        ) : null}
       </Stack>
+      <AxisBreadcrumbs title="Rows" axis={axes.row} path={rowPath} scope={rowScope} onChange={setAxis("row")} />
+      <AxisBreadcrumbs title="Columns" axis={axes.col} path={colPath} scope={colScope} onChange={setAxis("col")} />
+
+      {data ? (
+        <Typography variant="body2" color="text.secondary">
+          {data.found.toLocaleString()} datasets · a dataset counts in every row and column it is
+          annotated with (several species, tissues, ...) · click a cell to list its datasets
+          {axes.row.rollup || axes.col.rollup ? " · roll-up: a dataset also counts for all the more general terms of its annotations; click an underlined label to show only the terms under it" : ""}
+        </Typography>
+      ) : null}
 
       {loading ? (
         <Stack direction="row" spacing={1} alignItems="center">
@@ -242,31 +502,36 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
       ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
 
-      {data && !loading ? (
-        <Paper
-          variant="outlined"
-          sx={{ width: "100%", overflow: "auto", bgcolor: "rgba(255,255,255,0.72)" }}
-        >
-          <Stack sx={{ height: chartHeight, minWidth: chartMinWidth }}>
-            <ResponsiveHeatMap
+      {data && !loading && !data.rows.length ? (
+        <Alert severity="info">No dataset matches.</Alert>
+      ) : null}
+
+      {data && !loading && data.rows.length ? (
+        <Paper variant="outlined" sx={{ width: "100%", overflowX: "auto", bgcolor: "rgba(255,255,255,0.72)" }}>
+          <Stack direction="row" sx={{ width: labelWidth + chartWidth }}>
+            <RowLabels
+              rows={data.rows}
+              totals={data.rowTotals}
+              field={axes.row.field}
+              width={labelWidth}
+              top={marginTop}
+              height={chartHeight}
+              canDrill={(value) => canDrill(axes.row, value)}
+              onDrill={(value) => drill("row", value)}
+            />
+            <HeatMap
+              width={chartWidth}
+              height={chartHeight}
               data={chartData}
-              margin={{ top: 110, right: 24, bottom: 52, left: 140 }}
+              margin={{ top: marginTop, right: CHART_SIDE, bottom: marginBottom, left: CHART_SIDE }}
               theme={NIVO_THEME}
               forceSquare={false}
               xInnerPadding={0.08}
               yInnerPadding={0.08}
-              axisTop={{
-                tickSize: 4,
-                tickPadding: 8,
-                tickRotation: -45,
-              }}
+              axisTop={{ tickSize: 4, tickPadding: 6, tickRotation: -45, renderTick: tickRenderer("col") }}
               axisRight={null}
               axisBottom={null}
-              axisLeft={{
-                tickSize: 4,
-                tickPadding: 8,
-                tickRotation: 0,
-              }}
+              axisLeft={null}
               colors={{
                 type: "sequential",
                 colors: ["#e8f2ef", "#0f6a5c"],
@@ -284,12 +549,22 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
               isInteractive
               onClick={(cell) => {
                 if (!cell.value) return;
-                onApplyCell(axes.row, String(cell.serieId), axes.col, String(cell.data.x));
+                // Filters on hierarchical fields match descendants: raw terms and 'not more
+                // specific' values need an exact filter to list the datasets of the cell.
+                const filterValue = (axis: AxisState, v: string) => {
+                  if (v.startsWith(SELF_PREFIX)) return EXACT_PREFIX + v.slice(SELF_PREFIX.length);
+                  return isHierarchical(axis.field) && !axis.rollup ? EXACT_PREFIX + v : v;
+                };
+                onApplyCell([
+                  { field: axes.row.field, value: filterValue(axes.row, String(cell.serieId)) },
+                  { field: axes.col.field, value: filterValue(axes.col, String(cell.data.x)) },
+                ]);
               }}
               tooltip={({ cell }) => (
                 <Paper elevation={3} sx={{ px: 1.25, py: 0.75 }}>
                   <Typography variant="caption" display="block" color="text.secondary">
-                    {cell.serieId} × {String(cell.data.x)}
+                    {termLabel(axes.row.field, String(cell.serieId))} ×{" "}
+                    {termLabel(axes.col.field, String(cell.data.x))}
                   </Typography>
                   <Typography variant="body2" fontWeight={700}>
                     {(cell.value ?? 0).toLocaleString()} datasets

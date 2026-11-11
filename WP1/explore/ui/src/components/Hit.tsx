@@ -1,41 +1,12 @@
 import type { ReactNode } from "react";
-import {
-  Card,
-  CardContent,
-  Chip,
-  Link,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Card, CardContent, Chip, Link, Stack, Tooltip, Typography } from "@mui/material";
+import { FIELD_TITLES, labelsOf, termLabel, type ExperimentRow, type FacetField } from "../catalogQuery";
 import { EllipsisChip } from "./EllipsisChip";
 
-export type ExperimentHit = {
-  objectID: string;
-  title?: string;
-  source?: string;
-  organism?: string[];
-  top_organ?: string[];
-  tissue?: string[];
-  assay?: string[];
-  disease?: string[];
-  cell_type?: string[];
-  development_stage?: string[];
-  suspension_type?: string[];
-  cell_count?: number;
-  feature_count?: number;
-  explorer_url?: string;
-  experiment_id?: string;
-  study_journal?: string;
-};
+export type ExperimentHit = ExperimentRow;
 
 export function hitTitle(hit: ExperimentHit): string {
-  return hit.title || hit.experiment_id || hit.objectID;
-}
-
-export function formatSource(source?: string): string {
-  if (source === "scfair") return "scFair";
-  return source || "unknown";
+  return hit.title || hit.id;
 }
 
 /**
@@ -55,7 +26,7 @@ export function formatCompactCount(value: number): string {
   return `${formatScaled(n / 1_000_000_000)}B`;
 }
 
-/** Attribute lists: at most 3 value chips, then a single +n chip. */
+/** Attribute lists: at most `limit` value chips, then a single +n chip listing the rest. */
 export function AttributeChips({
   values,
   limit = 3,
@@ -75,7 +46,7 @@ export function AttributeChips({
     );
   }
   const shown = values.slice(0, limit);
-  const rest = values.length - shown.length;
+  const rest = values.slice(limit);
   return (
     <Stack
       direction="row"
@@ -85,16 +56,34 @@ export function AttributeChips({
       sx={wrap ? undefined : { overflow: "hidden" }}
     >
       {shown.map((value) => (
-        <EllipsisChip
-          key={value}
-          size="small"
-          label={value}
-          variant="outlined"
-          maxWidth={chipMaxWidth}
-        />
+        <EllipsisChip key={value} size="small" label={value} variant="outlined" maxWidth={chipMaxWidth} />
       ))}
-      {rest > 0 ? <Chip size="small" label={`+${rest}`} variant="outlined" /> : null}
+      {rest.length ? (
+        <Tooltip title={rest.join(" · ")}>
+          <Chip size="small" label={`+${rest.length}`} variant="outlined" />
+        </Tooltip>
+      ) : null}
     </Stack>
+  );
+}
+
+/** Chips of the resources of a dataset, each linking to the dataset in that resource. */
+export function SourceChips({ hit }: { hit: ExperimentHit }) {
+  return (
+    <>
+      {hit.values.source.map((slug, i) => {
+        const url = hit.source_explorer_urls[i];
+        return (
+          <Chip
+            key={slug}
+            size="small"
+            color="primary"
+            label={termLabel("source", slug)}
+            {...(url ? { component: "a", href: url, target: "_blank", rel: "noreferrer", clickable: true } : {})}
+          />
+        );
+      })}
+    </>
   );
 }
 
@@ -108,6 +97,17 @@ function FacetBlock({ label, children }: { label: string; children: ReactNode })
     </Stack>
   );
 }
+
+const CARD_FIELDS: FacetField[] = [
+  "organism",
+  "tissue",
+  "cell_type",
+  "development_stage",
+  "assay",
+  "disease",
+  "suspension_type",
+  "sex",
+];
 
 export function Hit({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
@@ -136,24 +136,28 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
           )}
         </Typography>
         <Stack direction="row" flexWrap="wrap" useFlexGap gap={0.5} mb={1}>
-          {hit.source ? (
-            <Chip size="small" color="primary" label={formatSource(hit.source)} />
-          ) : null}
-          <Tooltip title={(hit.cell_count ?? 0).toLocaleString()} enterDelay={400}>
-            <Chip size="small" label={`${formatCompactCount(hit.cell_count ?? 0)} cells`} />
+          <SourceChips hit={hit} />
+          <Tooltip title={hit.cell_count.toLocaleString()} enterDelay={400}>
+            <Chip size="small" label={`${formatCompactCount(hit.cell_count)} cells`} />
           </Tooltip>
-          {hit.feature_count ? (
-            <Tooltip title={hit.feature_count.toLocaleString()} enterDelay={400}>
-              <Chip size="small" label={`${formatCompactCount(hit.feature_count)} features`} />
-            </Tooltip>
-          ) : null}
-          {hit.study_journal && hit.study_journal !== "unknown" ? (
-            <EllipsisChip
+          {hit.values.flags.map((flag) => (
+            <Chip key={flag} size="small" color="warning" variant="outlined" label={termLabel("flags", flag)} />
+          ))}
+          {hit.doi ? (
+            <Chip
               size="small"
               variant="outlined"
-              label={hit.study_journal}
-              maxWidth={140}
+              component="a"
+              href={`https://doi.org/${hit.doi}`}
+              target="_blank"
+              rel="noreferrer"
+              clickable
+              label={hit.doi_label || hit.doi}
+              sx={{ maxWidth: 220 }}
             />
+          ) : null}
+          {hit.h5ad_url ? (
+            <Chip size="small" variant="outlined" component="a" href={hit.h5ad_url} clickable label="H5AD" />
           ) : null}
         </Stack>
         <Stack
@@ -161,35 +165,13 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
           flexWrap="wrap"
           useFlexGap
           gap={1}
-          sx={{
-            "& > *": {
-              flex: "1 1 calc(50% - 8px)",
-              minWidth: 0,
-              maxWidth: "100%",
-            },
-          }}
+          sx={{ "& > *": { flex: "1 1 calc(50% - 8px)", minWidth: 0, maxWidth: "100%" } }}
         >
-          <FacetBlock label="Organism">
-            <AttributeChips values={hit.organism} />
-          </FacetBlock>
-          <FacetBlock label="Top organ">
-            <AttributeChips values={hit.top_organ} />
-          </FacetBlock>
-          <FacetBlock label="Tissue">
-            <AttributeChips values={hit.tissue} />
-          </FacetBlock>
-          <FacetBlock label="Assay">
-            <AttributeChips values={hit.assay} />
-          </FacetBlock>
-          <FacetBlock label="Disease">
-            <AttributeChips values={hit.disease} />
-          </FacetBlock>
-          <FacetBlock label="Cell type">
-            <AttributeChips values={hit.cell_type} />
-          </FacetBlock>
-          <FacetBlock label="Dev. stage">
-            <AttributeChips values={hit.development_stage} />
-          </FacetBlock>
+          {CARD_FIELDS.map((field) => (
+            <FacetBlock key={field} label={FIELD_TITLES[field]}>
+              <AttributeChips values={labelsOf(field, hit.values[field])} />
+            </FacetBlock>
+          ))}
         </Stack>
       </CardContent>
     </Card>

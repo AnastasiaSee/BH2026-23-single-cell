@@ -1,0 +1,93 @@
+factor	term_id	term_label	annotated	subsets
+tissue	UBERON:0000060	anatomical wall	no	upper_level
+tissue	UBERON:0000061	anatomical structure	no	common_anatomy;upper_level
+tissue	UBERON:0000062	organ	no	common_anatomy;upper_level
+tissue	UBERON:0000063	organ subunit	no	upper_level
+tissue	UBERON:0000064	organ part	no	common_anatomy;non_informative;upper_level
+tissue	UBERON:0000072	proximo-distal subdivision of respiratory tract	no	non_informative
+tissue	UBERON:0000073	regional part of nervous system	no	non_informative;upper_level
+tissue	UBERON:0000075	subdivision of skeletal system	no	non_informative
+tissue	UBERON:0000093	sulcus	no	non_informative
+tissue	UBERON:0000119	cell layer	no	upper_level
+tissue	UBERON:0000168	proximal-distal subdivision of colon	no	non_informative
+tissue	UBERON:0000349	limbic system	no	non_informative
+tissue	UBERON:0000463	organism substance	no	common_anatomy;upper_level
+tissue	UBERON:0000464	anatomical space	no	common_anatomy;upper_level
+tissue	UBERON:0000465	material anatomical entity	no	common_anatomy;upper_level
+tissue	UBERON:0000466	immaterial anatomical entity	no	common_anatomy;upper_level
+tissue	UBERON:0000467	anatomical system	no	common_anatomy;upper_level
+tissue	UBERON:0000468	multicellular organism	no	common_anatomy;upper_level
+tissue	UBERON:0000471	compound organ component	no	upper_level
+tissue	UBERON:0000475	organism subdivision	no	common_anatomy;upper_level
+tissue	UBERON:0000477	anatomical cluster	no	common_anatomy;upper_level
+tissue	UBERON:0000479	tissue	no	common_anatomy;upper_level
+tissue	UBERON:0000481	multi-tissue structure	no	common_anatomy;upper_level
+tissue	UBERON:0000489	cavitated compound organ	no	upper_level
+tissue	UBERON:0000914	organismal segment	no	upper_level
+tissue	UBERON:0000957	lamina	no	non_informative;upper_level
+tissue	UBERON:0000958	medulla of organ	no	upper_level
+tissue	UBERON:0001062	anatomical entity	yes	common_anatomy;upper_level
+tissue	UBERON:0001444	subdivision of head	no	non_informative
+tissue	UBERON:0001560	neck of organ	no	non_informative
+tissue	UBERON:0001851	cortex	yes	upper_level
+tissue	UBERON:0001948	regional part of spinal cord	no	non_informative
+tissue	UBERON:0002075	viscus	no	upper_level
+tissue	UBERON:0002553	anatomical cavity	no	upper_level
+tissue	UBERON:0002616	regional part of brain	no	non_informative
+tissue	UBERON:0002749	regional part of cerebellar cortex	no	non_informative
+tissue	UBERON:0003102	surface structure	no	upper_level
+tissue	UBERON:0003103	compound organ	no	upper_level
+tissue	UBERON:0003876	hippocampal field	yes	non_informative
+tissue	UBERON:0003893	capsule	no	non_informative
+tissue	UBERON:0004111	anatomical conduit	no	common_anatomy
+tissue	UBERON:0004529	anatomical projection	no	common_anatomy;upper_level
+tissue	UBERON:0004732	segmental subdivision of nervous system	no	non_informative
+tissue	UBERON:0004733	segmental subdivision of hindbrain	no	non_informative
+tissue	UBERON:0004921	subdivision of digestive tract	no	non_informative
+tissue	UBERON:0004923	organ component layer	no	upper_level
+tissue	UBERON:0005162	multi cell part structure	no	upper_level
+tissue	UBERON:0005172	abdomen element	no	non_informative
+tissue	UBERON:0005173	abdominal segment element	no	non_informative
+tissue	UBERON:0005174	dorsal region element	no	non_informative
+tissue	UBERON:0005175	chest organ	no	non_informative
+tissue	UBERON:0005177	trunk region element	no	non_informative
+tissue	UBERON:0005178	thoracic cavity element	no	non_informative
+tissue	UBERON:0005179	pelvic region element	no	non_informative
+tissue	UBERON:0005181	thoracic segment organ	no	non_informative
+tissue	UBERON:0005291	embryonic tissue	no	upper_level
+tissue	UBERON:0005423	developing anatomical structure	no	common_anatomy
+tissue	UBERON:0005983	heart layer	no	non_informative
+tissue	UBERON:0006058	multi-limb segment region	no	non_informative
+tissue	UBERON:0006876	vasculature of organ	no	non_informative
+tissue	UBERON:0006983	anatomical point	no	common_anatomy;upper_level
+tissue	UBERON:0006984	anatomical surface	no	upper_level
+tissue	UBERON:0007651	anatomical junction	no	common_anatomy;upper_level
+tissue	UBERON:0008202	bone of hip region	no	non_informative
+tissue	UBERON:0009569	subdivision of trunk	no	non_informative
+tissue	UBERON:0009778	pleural sac	no	non_informative
+tissue	UBERON:0009911	lobule	no	upper_level
+tissue	UBERON:0009912	anatomical lobe	no	upper_level
+tissue	UBERON:0010000	multicellular anatomical structure	yes	common_anatomy;upper_level
+tissue	UBERON:0010009	aggregate regional part of brain	no	non_informative
+tissue	UBERON:0010199	bona-fide anatomical boundary	no	upper_level
+tissue	UBERON:0010758	subdivision of organism along appendicular axis	no	upper_level
+tissue	UBERON:0010912	subdivision of skeleton	no	non_informative
+tissue	UBERON:0011158	primary subdivision of skull	no	non_informative
+tissue	UBERON:0011159	primary subdivision of cranial skeletal system	no	non_informative
+tissue	UBERON:0011215	central nervous system cell part cluster	no	upper_level
+tissue	UBERON:0011216	organ system subdivision	no	common_anatomy;upper_level
+tissue	UBERON:0011676	subdivision of organism along main body axis	no	upper_level
+tissue	UBERON:0013515	subdivision of oviduct	no	non_informative
+tissue	UBERON:0013701	main body axis	no	non_informative
+tissue	UBERON:0013702	body proper	yes	non_informative
+tissue	UBERON:0013754	integumentary system layer	no	non_informative
+tissue	UBERON:0015212	lateral structure	no	non_informative
+tissue	UBERON:0034768	morphological feature	no	common_anatomy
+tissue	UBERON:0034921	multi organ part structure	no	common_anatomy
+tissue	UBERON:0034922	cell cluster	no	common_anatomy
+tissue	UBERON:0034923	disconnected anatomical group	no	common_anatomy
+tissue	UBERON:0034925	anatomical collection	no	common_anatomy
+cell_type	CL:0000000	cell	yes	ubprop:upper_level
+cell_type	CL:0000039	germ line cell	no	ubprop:upper_level
+cell_type	CL:0000325	stuff accumulating cell	no	ubprop:upper_level
+development_stage	UBERON:0000105	life cycle stage	yes	common_anatomy;upper_level

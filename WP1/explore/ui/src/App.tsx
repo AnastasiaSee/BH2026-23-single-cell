@@ -27,12 +27,17 @@ import { FacetList } from "./components/FacetList";
 import { ResultsPanel } from "./components/ResultsPanel";
 import { ViewToggle, type ResultsView } from "./components/ViewToggle";
 import {
+  FACET_FIELDS,
+  FIELD_TITLES,
   getConnection,
   searchRows,
+  termLabel,
   type ExperimentRow,
   type FacetField,
   type FacetSelection,
 } from "./catalogQuery";
+
+const TITLE = "Single-cell datasets across species";
 
 const PAGE_SIZE = 24;
 const DRAWER_WIDTH = 300;
@@ -64,45 +69,14 @@ const DrawerHeader = styled(Toolbar)(({ theme }) => ({
   gap: theme.spacing(0.5),
 }));
 
-const FACET_PANELS: {
-  field: FacetField;
-  title: string;
-  searchable?: boolean;
-  open?: boolean;
-  limit?: number;
-}[] = [
-  { field: "source", title: "Source" },
-  { field: "organism", title: "Organism" },
-  { field: "top_organ", title: "Top organ", searchable: true },
-  {
-    field: "tissue",
-    title: "Tissue",
-    searchable: true,
-    open: false,
-  },
-  { field: "tissue_type", title: "Tissue type", open: false },
-  { field: "assay", title: "Assay", searchable: true },
-  { field: "disease", title: "Disease", searchable: true },
-  {
-    field: "cell_type",
-    title: "Cell type",
-    searchable: true,
-  },
-  {
-    field: "development_stage",
-    title: "Development stage",
-    searchable: true,
-    open: false,
-  },
-  { field: "suspension_type", title: "Suspension" },
-  { field: "sex", title: "Sex" },
-  {
-    field: "study_journal",
-    title: "Journal",
-    searchable: true,
-    open: false,
-  },
-];
+/** Filter panels open at start; the others are collapsed. */
+const OPEN_PANELS = new Set<FacetField>([
+  "organism",
+  "tissue",
+  "cell_type",
+  "development_stage",
+  "suspension_type",
+]);
 
 function toggleValue(values: string[] | undefined, value: string): string[] {
   const current = values ?? [];
@@ -116,8 +90,21 @@ export default function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [facets, setFacets] = useState<FacetSelection>({});
-  const [view, setView] = useState<ResultsView>("cards");
+  // Initial filters from the URL, e.g. ?tissue=UBERON:0000955,UBERON:0000948&organism=NCBITaxon:9606
+  const [facets, setFacets] = useState<FacetSelection>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const out: FacetSelection = {};
+    for (const field of FACET_FIELDS) {
+      const values = (params.get(field) ?? "").split(",").filter(Boolean);
+      if (values.length) out[field] = values;
+    }
+    return out;
+  });
+  // Initial view from the URL (?view=cards|table|pivot), pivot by default.
+  const [view, setView] = useState<ResultsView>(() => {
+    const v = new URLSearchParams(window.location.search).get("view");
+    return v === "cards" || v === "table" ? v : "pivot";
+  });
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<ExperimentRow[]>([]);
   const [found, setFound] = useState(0);
@@ -182,7 +169,7 @@ export default function App() {
 
   const activeRefinements = useMemo(
     () =>
-      Object.entries(facets).flatMap(([field, values]) =>
+      (Object.entries(facets) as [FacetField, string[]][]).flatMap(([field, values]) =>
         values.map((value) => ({ field, value }))
       ),
     [facets]
@@ -200,21 +187,23 @@ export default function App() {
     });
   };
 
-  const onApplyFacet = (field: string, value: string) => {
-    if (value === "(none)") return;
-    onToggleFacet(field as FacetField, value);
+  /** Add a filter value (pivot cell or group click), without removing one already set. */
+  const onApplyFacet = (field: FacetField, value: string) => {
+    setFacets((prev) =>
+      prev[field]?.includes(value) ? prev : { ...prev, [field]: [...(prev[field] ?? []), value] }
+    );
   };
 
   if (bootError) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h1" fontSize={{ xs: "2rem", md: "2.75rem" }} gutterBottom>
-          scFair datasets
+          {TITLE}
         </Typography>
         <Alert severity="error">
           {bootError}
           <Typography component="span" display="block" mt={1}>
-            Export Parquet first: <code>python indexer/export_parquet.py</code>
+            Export the Parquet files first: <code>python scripts/export_explore.py</code> (see WP1/README.md)
           </Typography>
         </Alert>
       </Container>
@@ -225,7 +214,7 @@ export default function App() {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h1" fontSize={{ xs: "2rem", md: "2.75rem" }} gutterBottom>
-          scFair datasets
+          {TITLE}
         </Typography>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <CircularProgress size={22} />
@@ -252,10 +241,12 @@ export default function App() {
       >
         <Container maxWidth="lg" sx={{ py: 2.5 }}>
           <Typography variant="h1" fontSize={{ xs: "1.85rem", md: "2.5rem" }} gutterBottom>
-            scFair datasets
+            {TITLE}
           </Typography>
           <Typography color="text.secondary" maxWidth="42rem">
-            Browse and filter single-cell datasets by organism, tissue, assay, and more.
+            Number of datasets per species and tissue, cell type or developmental stage, from
+            CELLxGENE, scFAIR resources and Fenix, with ontology roll-up (composite-metazoan
+            Uberon). Filters on tissue, cell type and stage include more specific terms.
           </Typography>
         </Container>
       </AppBar>
@@ -307,18 +298,16 @@ export default function App() {
           </DrawerHeader>
           <Divider />
           <List dense disablePadding sx={{ overflowY: "auto", px: 1.5, py: 1 }}>
-            {FACET_PANELS.map((panel) => (
-              <ListItem key={panel.field} disableGutters disablePadding sx={{ display: "block" }}>
+            {FACET_FIELDS.map((field) => (
+              <ListItem key={field} disableGutters disablePadding sx={{ display: "block" }}>
                 <FacetList
-                  field={panel.field}
-                  title={panel.title}
+                  field={field}
+                  title={FIELD_TITLES[field]}
                   query={debouncedQuery}
                   facets={facets}
-                  selected={facets[panel.field] ?? []}
-                  searchable={panel.searchable}
-                  open={panel.open}
-                  limit={panel.limit}
-                  onToggle={(value) => onToggleFacet(panel.field, value)}
+                  selected={facets[field] ?? []}
+                  open={OPEN_PANELS.has(field)}
+                  onToggle={(value) => onToggleFacet(field, value)}
                 />
               </ListItem>
             ))}
@@ -326,7 +315,7 @@ export default function App() {
         </Drawer>
 
         <Main open={filtersOpen}>
-          <Container maxWidth="lg" sx={{ py: 2.5, pb: 8 }}>
+          <Container maxWidth="xl" sx={{ py: 2.5, pb: 8 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={1.5}
@@ -351,7 +340,7 @@ export default function App() {
                 fullWidth
                 size="small"
                 type="search"
-                placeholder="Search titles, tissues, assays…"
+                placeholder="Search titles, DOIs, species, tissues, cell types…"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 InputProps={{
@@ -370,9 +359,9 @@ export default function App() {
                 {activeRefinements.map(({ field, value }) => (
                   <EllipsisChip
                     key={`${field}:${value}`}
-                    label={`${field}: ${value}`}
+                    label={`${FIELD_TITLES[field]}: ${termLabel(field, value)}`}
                     maxWidth={220}
-                    onDelete={() => onToggleFacet(field as FacetField, value)}
+                    onDelete={() => onToggleFacet(field, value)}
                   />
                 ))}
               </Stack>
