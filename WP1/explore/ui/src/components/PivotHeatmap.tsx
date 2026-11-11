@@ -58,6 +58,42 @@ const NIVO_THEME = {
   },
 } as const;
 
+const LABEL_ON_LIGHT = "#14212b";
+const LABEL_ON_DARK = "#f4fffb";
+
+/** Pick light/dark label text from cell fill for readable contrast. */
+function contrastingLabelColor(background: string): string {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  const rgb = background.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (rgb) {
+    r = Number(rgb[1]);
+    g = Number(rgb[2]);
+    b = Number(rgb[3]);
+  } else {
+    const hex = background.replace("#", "").trim();
+    const full =
+      hex.length === 3
+        ? hex
+            .split("")
+            .map((ch) => ch + ch)
+            .join("")
+        : hex;
+    if (full.length >= 6) {
+      r = Number.parseInt(full.slice(0, 2), 16);
+      g = Number.parseInt(full.slice(2, 4), 16);
+      b = Number.parseInt(full.slice(4, 6), 16);
+    }
+  }
+  const channel = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  return luminance > 0.42 ? LABEL_ON_LIGHT : LABEL_ON_DARK;
+}
+
 function loadAxes(): { row: FacetField; col: FacetField } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -242,10 +278,7 @@ export function PivotHeatmap({ query, facets, onApplyCell }: Props) {
               borderWidth={1}
               borderRadius={2}
               enableLabels
-              labelTextColor={{
-                from: "color",
-                modifiers: [["darker", 2.2]],
-              }}
+              labelTextColor={(cell) => contrastingLabelColor(cell.color)}
               hoverTarget="cell"
               animate={false}
               isInteractive
