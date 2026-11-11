@@ -97,3 +97,16 @@ All options are mandatory. Use the same datasets file as in step 3. The TSV has 
 | `ancestor_ids` | all ancestors within the domain (`;`-separated), the term excluded: a dataset annotated with the term counts for all of them in the roll-up |
 
 The script warns about annotated terms that are not in composite (e.g. a remapping TSV generated from other datasets) or outside their factor's domain.
+
+## 5. scFair experiment catalog
+
+scFair dataset metadata snapshot, download script, facet summary, and related notes.
+Source files currently live under [`fenix/`](fenix/) (CELLxGENE / Fenix API ingest); exported rows use `source=scfair`.
+
+→ [`fenix/`](fenix/)
+
+## 6. Explore stack (Parquet + hyparquet)
+
+Client-side faceted explore over **scFair** datasets (`source=scfair`), with optional partner JSON via `--json SOURCE=PATH`:
+
+→ [`explore/`](explore/)
