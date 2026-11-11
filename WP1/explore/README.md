@@ -54,13 +54,15 @@ Partner JSON: `{ "datasets": [ … ] }` (or `{ "data": [ … ] }` / bare array) 
 
 ## GitHub Pages
 
-The UI deploys from `WP1/explore/ui` via [`.github/workflows/deploy-explore-pages.yml`](../../.github/workflows/deploy-explore-pages.yml).
+The UI deploys from `WP1/explore/ui` via [`.github/workflows/deploy-explore-pages.yml`](../../.github/workflows/deploy-explore-pages.yml) onto the **`gh-pages`** branch.
 
 - Site: https://amnonkhen.github.io/BH2026-23-single-cell/
 - Build uses `VITE_BASE_PATH=/BH2026-23-single-cell/`
 - Keep `ui/public/experiments.parquet` committed (or regenerate before deploy)
 
-In the repo **Settings → Pages**, set **Source** to **GitHub Actions** (one-time). Then push to `main` (or run **Actions → Deploy explore UI to GitHub Pages → Run workflow**).
+**One-time repo setup:** Settings → Pages → Build and deployment → Source: **Deploy from a branch** → Branch: **`gh-pages`** / `/ (root)` → Save.
+
+After that, every push that changes the UI (or a manual **Actions → Deploy explore UI to GitHub Pages → Run workflow**) refreshes the site.
 
 ### OLS hierarchy refresh
 
