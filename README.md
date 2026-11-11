@@ -40,6 +40,7 @@ Shared material that spans work packages goes in [all/](all/).
 
 1. Clone this repository.
 2. Set up your computing environment by following [WP1/SETUP.md](WP1/SETUP.md). It gives a conda environment with `anndata`, `scanpy`, the CELLxGENE Census and schema validator, and SAMap.
+3. To find datasets for your analyses, use the WP1 dataset explorer: **https://fbastian.github.io/BH2026-23-single-cell/**. It shows the number of single-cell datasets (CELLxGENE, Single Cell Portal, ASAP, Bgee) per species and tissue, cell type or developmental stage, with ontology roll-up across species, filters, and links to the datasets.
 
 ## Working together
 

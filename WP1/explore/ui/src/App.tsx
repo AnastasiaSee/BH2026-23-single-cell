@@ -29,7 +29,7 @@ import { ViewToggle, type ResultsView } from "./components/ViewToggle";
 import {
   FACET_FIELDS,
   FIELD_TITLES,
-  getConnection,
+  initCatalog,
   searchRows,
   termLabel,
   type ExperimentRow,
@@ -114,7 +114,7 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    getConnection()
+    initCatalog()
       .then(() => {
         if (!cancelled) {
           setReady(true);

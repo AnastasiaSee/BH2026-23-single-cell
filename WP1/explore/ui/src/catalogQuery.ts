@@ -244,8 +244,8 @@ async function loadCatalog(): Promise<Catalog> {
   return catalogPromise;
 }
 
-/** Kept for App.tsx boot path compatibility. */
-export async function getConnection(): Promise<void> {
+/** Loads the catalog (both Parquet files); resolves when the page can render. */
+export async function initCatalog(): Promise<void> {
   await loadCatalog();
 }
 

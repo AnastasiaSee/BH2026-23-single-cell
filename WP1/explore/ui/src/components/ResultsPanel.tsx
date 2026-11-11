@@ -242,7 +242,6 @@ export function ResultsPanel({ view, rows, query, facets, onOpenHits, onApplyFac
       <PivotHeatmap
         query={query}
         facets={facets}
-        onOpenHits={onOpenHits}
         onApplyCell={(cells) => {
           for (const { field, value } of cells) onApplyFacet(field, value);
           onOpenHits();

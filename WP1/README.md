@@ -1,8 +1,8 @@
 # WP1: Biodata resource integration
 
-Pipeline to build the dataset metadata used for the species x factor table. All commands are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored); generated files to share, such as the term remapping TSV, go in `output/`.
+Pipeline to build the dataset metadata used for the species x factor table, online at **https://fbastian.github.io/BH2026-23-single-cell/**. The commands of each step are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored); generated files to share, such as the term remapping TSV, go in `output/`, and the files loaded by the explore page in `explore/ui/public/`.
 
-To run steps 1 to 6 in one go (from the repository root, in the conda environment):
+To run steps 1 to 6 in one go, in the conda environment (the script can be started from any folder, here the repository root):
 
 ```
 bash WP1/scripts/run_pipeline.sh                  # downloads the ontologies again
@@ -157,4 +157,4 @@ The terms file has one row per value of each field (`field`, `id`, `label`, `par
 
 ## 7. Explore page
 
-Static page (React, no server) with filters on the side and a pivot table (heatmap) of the number of datasets, e.g. species x tissue. See [explore/README.md](explore/README.md) to run it locally and for the deployment on GitHub Pages.
+Static page (React, no server) with filters on the side and a pivot table (heatmap) of the number of datasets, e.g. species x tissue. Online at https://fbastian.github.io/BH2026-23-single-cell/, deployed on GitHub Pages from the `main` branch. See [explore/README.md](explore/README.md) to run it locally and for the deployment.

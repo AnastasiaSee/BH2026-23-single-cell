@@ -194,7 +194,6 @@ function RowLabels({
 type Props = {
   query: string;
   facets: FacetSelection;
-  onOpenHits: () => void;
   onApplyCell: (cells: { field: FacetField; value: string }[]) => void;
 };
 

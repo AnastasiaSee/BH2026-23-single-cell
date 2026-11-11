@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - cursor/duckdb-parquet-explore-9fd8
     paths:
       - "WP1/explore/ui/**"
       - ".github/workflows/deploy-explore-pages.yml"

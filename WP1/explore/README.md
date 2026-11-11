@@ -1,5 +1,7 @@
 # Explore page: species x factor table
 
+**Online: https://fbastian.github.io/BH2026-23-single-cell/**
+
 Static page (React + Vite + MUI, Nivo heatmap, [hyparquet](https://github.com/hyparam/hyparquet)) to browse the merged datasets of the WP1 pipeline. It needs no server: the browser loads two Parquet files and computes the filters, counts and ontology roll-up in memory.
 
 | Piece | Role |
@@ -11,7 +13,7 @@ Static page (React + Vite + MUI, Nivo heatmap, [hyparquet](https://github.com/hy
 ## What the page shows
 
 - **Filters** (left): species, tissue, cell type, developmental stage, assay, disease, sex, suspension type, tissue type, resource, flags (merged across resources, several species). Values of a field are combined with OR, fields with AND. Tissue, cell type and stage are trees (composite-metazoan Uberon and CL, `is_a` + `part_of` within the factor domain): the arrow shows the more specific terms, and ticking a term also matches the datasets annotated with any of its descendants. The search box of a tree searches all its terms.
-- **Pivot** (default view): number of datasets for two fields, e.g. species x tissue. For tissue, cell type and stage, each axis is either:
+- **Pivot** (default view, opening on species x tissue in roll-up mode): number of datasets for two fields, e.g. species x tissue. For tissue, cell type and stage, each axis is either:
   - **Raw**: the terms as annotated (after remapping); a dataset annotated with "hippocampal formation" counts only in that column;
   - **Roll-up**: a dataset also counts for all the more general terms of its annotations (the hippocampal formation dataset also counts for brain, forebrain, ...). The columns are all the terms under the current term (the root at first), at any depth, sorted by number of datasets ("Show top" keeps the first ones). Click an underlined label to show only the terms under it, use the breadcrumb to go back up, or jump to any term. Datasets annotated with the current term itself and nothing more specific are in the column "... (not more specific)": at the root, these are the datasets without annotation.
 
@@ -42,4 +44,6 @@ After re-running the export, hard-refresh the browser.
 
 [`.github/workflows/deploy-explore-pages.yml`](../../.github/workflows/deploy-explore-pages.yml) builds `ui/` and pushes it to the `gh-pages` branch on every push to `main` that changes `WP1/explore/ui/` (or by hand: Actions, "Deploy explore UI to GitHub Pages", Run workflow). It does not run the Python export: commit the regenerated Parquet files in `ui/public/`.
 
-One-time repository setup: Settings, Pages, Build and deployment, Source "Deploy from a branch", branch `gh-pages`, folder `/ (root)`. The page is then at `https://<owner>.github.io/BH2026-23-single-cell/` (the build uses `VITE_BASE_PATH=/BH2026-23-single-cell/`).
+GitHub Pages is enabled for this repository: the page is at https://fbastian.github.io/BH2026-23-single-cell/. After a push, the new version is online once the workflow and the "pages build and deployment" run have finished (Actions tab, about a minute); hard-refresh the browser.
+
+In a fork, one-time setup: Settings, Pages, Build and deployment, Source "Deploy from a branch", branch `gh-pages`, folder `/ (root)`. The page is then at `https://<owner>.github.io/BH2026-23-single-cell/` (the build uses `VITE_BASE_PATH=/BH2026-23-single-cell/`).

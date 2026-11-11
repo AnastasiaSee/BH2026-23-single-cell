@@ -1,6 +1,6 @@
 import { createTheme } from "@mui/material/styles";
 
-/** scFair teal palette — avoid default MUI purple. */
+/** Teal palette — avoid default MUI purple. */
 export const theme = createTheme({
   palette: {
     mode: "light",
