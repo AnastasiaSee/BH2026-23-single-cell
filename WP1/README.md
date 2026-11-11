@@ -2,6 +2,15 @@
 
 Pipeline to build the dataset metadata used for the species x factor table. All commands are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored); generated files to share, such as the term remapping TSV, go in `output/`.
 
+To run steps 1 to 6 in one go (from the repository root, in the conda environment):
+
+```
+bash WP1/scripts/run_pipeline.sh                  # downloads the ontologies again
+bash WP1/scripts/run_pipeline.sh --skip-download  # uses the ontologies already in data/
+```
+
+[scripts/run_pipeline.sh](scripts/run_pipeline.sh) runs the commands below and stops at the first error. The dataset exports (`data/datasets_CxG.json`, `data/datasets_scFAIR.json`, `data/datasets_fenix.json`) must already be in `data/`. Set `PYTHON` to use another interpreter (e.g. `PYTHON=/path/to/envs/bh23/bin/python`). A new ontology release can change the remappings: check the warnings and the `unresolved` rows of step 3.
+
 ## 1. Download the ontologies
 
 From the `data` folder:
