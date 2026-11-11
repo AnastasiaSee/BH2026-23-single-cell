@@ -8,7 +8,8 @@
 import { parquetReadObjects } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 
-export const PARQUET_URL = `${import.meta.env.BASE_URL}experiments.parquet`;
+/** Cache-bust so GitHub Pages / CDN cannot keep a stale HTML 404 as parquet. */
+export const PARQUET_URL = `${import.meta.env.BASE_URL}experiments.parquet?v=2`;
 
 export type FacetSelection = Record<string, string[]>;
 
@@ -114,22 +115,50 @@ function mapRow(row: Record<string, unknown>): ExperimentRow {
   };
 }
 
+function assertParquetMagic(buffer: ArrayBuffer, url: string): void {
+  if (buffer.byteLength < 8) {
+    throw new Error(
+      `Parquet too short (${buffer.byteLength} bytes) from ${url}. Hard-refresh or re-export: python indexer/export_parquet.py`
+    );
+  }
+  const bytes = new Uint8Array(buffer);
+  const head = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
+  const tail = String.fromCharCode(
+    bytes[bytes.length - 4],
+    bytes[bytes.length - 3],
+    bytes[bytes.length - 2],
+    bytes[bytes.length - 1]
+  );
+  if (head !== "PAR1" || tail !== "PAR1") {
+    const sniff = new TextDecoder().decode(bytes.slice(0, 64)).replace(/\s+/g, " ").slice(0, 48);
+    throw new Error(
+      `Invalid parquet from ${url} (got head=${JSON.stringify(head)} tail=${JSON.stringify(tail)}; starts ${JSON.stringify(sniff)}). Hard-refresh the page, or re-export: python indexer/export_parquet.py`
+    );
+  }
+}
+
 async function loadCatalog(): Promise<ExperimentRow[]> {
   if (!catalogPromise) {
     catalogPromise = (async () => {
-      const response = await fetch(PARQUET_URL);
+      // Full-file fetch (not range/URL mode): GitHub Pages gzips .parquet and
+      // applies byte ranges to the gzip stream, which breaks hyparquet footers.
+      const response = await fetch(PARQUET_URL, { cache: "no-cache" });
       if (!response.ok) {
         throw new Error(
           `Failed to fetch ${PARQUET_URL} (${response.status}). Run: python indexer/export_parquet.py`
         );
       }
       const buffer = await response.arrayBuffer();
+      assertParquetMagic(buffer, PARQUET_URL);
       const rows = await parquetReadObjects({
         file: buffer,
         compressors,
       });
       return (rows as Record<string, unknown>[]).map(mapRow);
-    })();
+    })().catch((err) => {
+      catalogPromise = null;
+      throw err;
+    });
   }
   return catalogPromise;
 }
