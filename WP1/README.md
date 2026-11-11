@@ -1,13 +1,14 @@
 # WP1: Biodata resource integration
 
-## Fenix experiment catalog
+## scFair experiment catalog
 
-CELLxGENE / Fenix experiment metadata snapshot, download script, facet summary, and search-UI stack notes:
+scFair dataset metadata snapshot, download script, facet summary, and related notes.
+Source files currently live under [`fenix/`](fenix/) (CELLxGENE / Fenix API ingest); exported rows use `source=scfair`.
 
 → [`fenix/`](fenix/)
 
 ## Explore stack (Parquet + hyparquet)
 
-Client-side faceted explore over Fenix (`source` facet), with optional partner JSON via `--json SOURCE=PATH`:
+Client-side faceted explore over **scFair** datasets (`source=scfair`), with optional partner JSON via `--json SOURCE=PATH`:
 
 → [`explore/`](explore/)
