@@ -8,7 +8,7 @@
 import { parquetReadObjects } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 
-export const PARQUET_URL = "/experiments.parquet";
+export const PARQUET_URL = `${import.meta.env.BASE_URL}experiments.parquet`;
 
 export type FacetSelection = Record<string, string[]>;
 

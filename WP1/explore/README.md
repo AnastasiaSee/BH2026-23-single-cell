@@ -52,6 +52,16 @@ Hard-refresh the UI so `/experiments.parquet` reloads.
 
 Partner JSON: `{ "datasets": [ … ] }` (or `{ "data": [ … ] }` / bare array) matching the partner ingest schema.
 
+## GitHub Pages
+
+The UI deploys from `WP1/explore/ui` via [`.github/workflows/deploy-explore-pages.yml`](../../.github/workflows/deploy-explore-pages.yml).
+
+- Site: https://amnonkhen.github.io/BH2026-23-single-cell/
+- Build uses `VITE_BASE_PATH=/BH2026-23-single-cell/`
+- Keep `ui/public/experiments.parquet` committed (or regenerate before deploy)
+
+In the repo **Settings → Pages**, set **Source** to **GitHub Actions** (one-time). Then push to `main` (or run **Actions → Deploy explore UI to GitHub Pages → Run workflow**).
+
 ### OLS hierarchy refresh
 
 ```bash
