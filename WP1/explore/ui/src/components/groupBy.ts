@@ -1,5 +1,7 @@
 import type { ExperimentHit } from "./Hit";
 
+/** Catalog rows are structurally compatible with ExperimentHit. */
+
 export type GroupByField =
   | "none"
   | "source"

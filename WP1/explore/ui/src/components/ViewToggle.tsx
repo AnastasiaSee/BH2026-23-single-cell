@@ -1,73 +1,40 @@
 import type { ReactNode } from "react";
+import GridViewIcon from "@mui/icons-material/GridView";
+import TableRowsIcon from "@mui/icons-material/TableRows";
+import PivotTableChartIcon from "@mui/icons-material/PivotTableChart";
+import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 
 export type ResultsView = "cards" | "table" | "pivot";
-
-const OPTIONS: { id: ResultsView; label: string; icon: ReactNode }[] = [
-  {
-    id: "cards",
-    label: "Cards",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" fill="currentColor" />
-        <rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2" fill="currentColor" />
-        <rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2" fill="currentColor" />
-        <rect x="9" y="9" width="5.5" height="5.5" rx="1.2" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    id: "table",
-    label: "Table",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="1.5" y="2" width="13" height="2.2" rx="0.6" fill="currentColor" />
-        <rect x="1.5" y="6.9" width="13" height="2.2" rx="0.6" fill="currentColor" />
-        <rect x="1.5" y="11.8" width="13" height="2.2" rx="0.6" fill="currentColor" />
-      </svg>
-    ),
-  },
-  {
-    id: "pivot",
-    label: "Pivot",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="1.5" y="1.5" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.95" />
-        <rect x="6.5" y="1.5" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.65" />
-        <rect x="11.5" y="1.5" width="3" height="4" rx="0.8" fill="currentColor" opacity="0.4" />
-        <rect x="1.5" y="6.5" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.7" />
-        <rect x="6.5" y="6.5" width="4" height="4" rx="0.8" fill="currentColor" opacity="0.9" />
-        <rect x="11.5" y="6.5" width="3" height="4" rx="0.8" fill="currentColor" opacity="0.55" />
-        <rect x="1.5" y="11.5" width="4" height="3" rx="0.8" fill="currentColor" opacity="0.45" />
-        <rect x="6.5" y="11.5" width="4" height="3" rx="0.8" fill="currentColor" opacity="0.6" />
-        <rect x="11.5" y="11.5" width="3" height="3" rx="0.8" fill="currentColor" opacity="0.3" />
-      </svg>
-    ),
-  },
-];
 
 type Props = {
   value: ResultsView;
   onChange: (view: ResultsView) => void;
 };
 
+const OPTIONS: { id: ResultsView; label: string; icon: ReactNode }[] = [
+  { id: "cards", label: "Cards", icon: <GridViewIcon fontSize="small" /> },
+  { id: "table", label: "Table", icon: <TableRowsIcon fontSize="small" /> },
+  { id: "pivot", label: "Pivot", icon: <PivotTableChartIcon fontSize="small" /> },
+];
+
 export function ViewToggle({ value, onChange }: Props) {
   return (
-    <div className="view-toggle" role="group" aria-label="Results layout">
-      {OPTIONS.map((option) => {
-        const selected = value === option.id;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            className={selected ? "view-toggle-btn is-active" : "view-toggle-btn"}
-            aria-pressed={selected}
-            onClick={() => onChange(option.id)}
-          >
-            {option.icon}
-            <span>{option.label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <ToggleButtonGroup
+      exclusive
+      size="small"
+      color="primary"
+      value={value}
+      aria-label="Results layout"
+      onChange={(_, next: ResultsView | null) => {
+        if (next) onChange(next);
+      }}
+    >
+      {OPTIONS.map((option) => (
+        <ToggleButton key={option.id} value={option.id} aria-label={option.label}>
+          {option.icon}
+          {option.label}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
   );
 }

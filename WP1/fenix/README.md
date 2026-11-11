@@ -64,7 +64,7 @@ Identifiers / links: `experiment_id`, `study_id`, `explorer_url`, `assets[].url`
 
 ## Implemented explore stack
 
-**Typesense + React InstantSearch + FastAPI (MCP-ready)** is scaffolded in [`../explore/`](../explore/). See that README for `compose up` → index → API → UI.
+**Parquet + hyparquet (client-side)** explore lives in [`../explore/`](../explore/). See that README for `export_parquet.py` → `npm run dev` (and how to add more JSON sources).
 
 ## Proposed search UI stacks (context / alternatives)
 

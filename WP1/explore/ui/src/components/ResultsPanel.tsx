@@ -1,12 +1,139 @@
-import { useEffect, useMemo, useState } from "react";
-import { useHits, useInstantSearch } from "react-instantsearch";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  Button,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Link,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Select,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography,
+  Chip,
+} from "@mui/material";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
+import type { ExperimentRow, FacetSelection } from "../catalogQuery";
+import { EllipsisChip } from "./EllipsisChip";
 import { GROUP_BY_OPTIONS, groupHits, type GroupByField } from "./groupBy";
-import { Hit, hitTitle, joinValues, type ExperimentHit } from "./Hit";
+import {
+  AttributeChips,
+  Hit,
+  formatCompactCount,
+  formatSource,
+  hitTitle,
+  type ExperimentHit,
+} from "./Hit";
 import { PivotHeatmap } from "./PivotHeatmap";
 import type { ResultsView } from "./ViewToggle";
 
-const GROUP_STORAGE_KEY = "fenix-explore-group-by";
+const GROUP_STORAGE_KEY = "scfair-explore-group-by";
+const COLUMNS_STORAGE_KEY = "scfair-explore-table-columns";
 const NONE_LABEL = "(none)";
+
+type TableColumnId =
+  | "title"
+  | "source"
+  | "organism"
+  | "top_organ"
+  | "assay"
+  | "disease"
+  | "cell_type"
+  | "development_stage"
+  | "cells";
+
+const TABLE_CHIP_MAX = 72;
+
+const TABLE_COLUMNS: {
+  id: TableColumnId;
+  label: string;
+  /** Fixed width for compact columns; omit so Title can expand. */
+  width?: number;
+  required?: boolean;
+}[] = [
+  { id: "title", label: "Title", required: true },
+  { id: "source", label: "Source", width: 76 },
+  { id: "organism", label: "Organism", width: 96 },
+  { id: "top_organ", label: "Top organ", width: 96 },
+  { id: "assay", label: "Assay", width: 96 },
+  { id: "disease", label: "Disease", width: 96 },
+  { id: "cell_type", label: "Cell type", width: 108 },
+  { id: "development_stage", label: "Dev. stage", width: 96 },
+  { id: "cells", label: "Cells", width: 56 },
+];
+
+const DEFAULT_COLUMNS: TableColumnId[] = ["title", "organism", "cell_type", "cells"];
+
+const PREVIOUS_DEFAULTS: TableColumnId[][] = [
+  ["title"],
+  ["title", "organism", "cell_type"],
+];
+
+function sameColumns(a: string[], b: TableColumnId[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+function columnCellSx(col: (typeof TABLE_COLUMNS)[number]) {
+  return {
+    width: col.width,
+    maxWidth: col.width,
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    verticalAlign: "middle",
+    ...(col.width
+      ? {}
+      : {
+          width: "auto",
+          maxWidth: "none",
+        }),
+  };
+}
+
+function TruncatedCell({
+  text,
+  width,
+  children,
+  align,
+}: {
+  text: string;
+  width?: number;
+  children?: ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <TableCell
+      align={align}
+      sx={{
+        width: width ?? "auto",
+        maxWidth: width,
+        whiteSpace: "nowrap",
+        verticalAlign: "middle",
+      }}
+    >
+      <Tooltip title={text} enterDelay={400}>
+        <Typography
+          component="span"
+          display="block"
+          noWrap
+          variant="inherit"
+          sx={{ overflow: "hidden", textOverflow: "ellipsis" }}
+        >
+          {children ?? text}
+        </Typography>
+      </Tooltip>
+    </TableCell>
+  );
+}
 
 function loadStoredGroupBy(): GroupByField {
   try {
@@ -20,6 +147,26 @@ function loadStoredGroupBy(): GroupByField {
   return "none";
 }
 
+function loadStoredColumns(): TableColumnId[] {
+  try {
+    const raw = localStorage.getItem(COLUMNS_STORAGE_KEY);
+    if (!raw) return DEFAULT_COLUMNS;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return DEFAULT_COLUMNS;
+    // Upgrade prior stock defaults to the current default set.
+    if (PREVIOUS_DEFAULTS.some((prev) => sameColumns(parsed.map(String), prev))) {
+      return DEFAULT_COLUMNS;
+    }
+    const valid = parsed.filter((id): id is TableColumnId =>
+      TABLE_COLUMNS.some((col) => col.id === id)
+    );
+    if (!valid.includes("title")) valid.unshift("title");
+    return valid.length ? valid : DEFAULT_COLUMNS;
+  } catch {
+    return DEFAULT_COLUMNS;
+  }
+}
+
 function groupDomId(key: string): string {
   const slug = key
     .toLowerCase()
@@ -31,42 +178,132 @@ function groupDomId(key: string): string {
 
 type Props = {
   view: ResultsView;
+  rows: ExperimentRow[];
+  query: string;
+  facets: FacetSelection;
   onOpenHits: () => void;
+  onApplyFacet: (field: string, value: string) => void;
 };
 
-function HitRow({ hit }: { hit: ExperimentHit }) {
-  const title = hitTitle(hit);
+function ChipCell({
+  width,
+  children,
+}: {
+  width: number;
+  children: ReactNode;
+}) {
   return (
-    <tr>
-      <td className="title-cell">
-        {hit.explorer_url ? (
-          <a href={hit.explorer_url} target="_blank" rel="noreferrer">
-            {title}
-          </a>
-        ) : (
-          title
-        )}
-        {hit.study_journal && hit.study_journal !== "unknown" ? (
-          <span className="row-sub">{hit.study_journal}</span>
-        ) : null}
-      </td>
-      <td>{hit.source || "—"}</td>
-      <td>{joinValues(hit.organism, 2)}</td>
-      <td>{joinValues(hit.top_organ, 2)}</td>
-      <td>{joinValues(hit.assay, 2)}</td>
-      <td>{joinValues(hit.disease, 2)}</td>
-      <td>{joinValues(hit.cell_type, 2)}</td>
-      <td>{joinValues(hit.development_stage, 2)}</td>
-      <td className="num">{(hit.cell_count ?? 0).toLocaleString()}</td>
-    </tr>
+    <TableCell
+      sx={{
+        width,
+        maxWidth: width,
+        whiteSpace: "nowrap",
+        verticalAlign: "middle",
+        overflow: "hidden",
+        px: 0.75,
+      }}
+    >
+      {children}
+    </TableCell>
   );
 }
 
-export function ResultsPanel({ view, onOpenHits }: Props) {
-  const { items } = useHits<ExperimentHit>();
-  const { setIndexUiState } = useInstantSearch();
+function HitRow({
+  hit,
+  visible,
+}: {
+  hit: ExperimentHit;
+  visible: Set<TableColumnId>;
+}) {
+  const title = hitTitle(hit);
+  const cellCount = hit.cell_count ?? 0;
+  const cellsLabel = formatCompactCount(cellCount);
+  const cellsTooltip = cellCount.toLocaleString();
+  const titleTooltip =
+    hit.study_journal && hit.study_journal !== "unknown"
+      ? `${title} · ${hit.study_journal}`
+      : title;
+  const col = (id: TableColumnId) => TABLE_COLUMNS.find((item) => item.id === id)!;
+
+  return (
+    <TableRow hover>
+      {visible.has("title") ? (
+        <TruncatedCell text={titleTooltip}>
+          {hit.explorer_url ? (
+            <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
+              {title}
+            </Link>
+          ) : (
+            title
+          )}
+        </TruncatedCell>
+      ) : null}
+      {visible.has("source") ? (
+        <ChipCell width={col("source").width!}>
+          {hit.source ? (
+            <Chip size="small" color="primary" label={formatSource(hit.source)} sx={{ maxWidth: TABLE_CHIP_MAX }} />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              —
+            </Typography>
+          )}
+        </ChipCell>
+      ) : null}
+      {visible.has("organism") ? (
+        <ChipCell width={col("organism").width!}>
+          <AttributeChips values={hit.organism} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
+        </ChipCell>
+      ) : null}
+      {visible.has("top_organ") ? (
+        <ChipCell width={col("top_organ").width!}>
+          <AttributeChips values={hit.top_organ} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
+        </ChipCell>
+      ) : null}
+      {visible.has("assay") ? (
+        <ChipCell width={col("assay").width!}>
+          <AttributeChips values={hit.assay} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
+        </ChipCell>
+      ) : null}
+      {visible.has("disease") ? (
+        <ChipCell width={col("disease").width!}>
+          <AttributeChips values={hit.disease} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
+        </ChipCell>
+      ) : null}
+      {visible.has("cell_type") ? (
+        <ChipCell width={col("cell_type").width!}>
+          <AttributeChips values={hit.cell_type} chipMaxWidth={TABLE_CHIP_MAX} wrap={false} />
+        </ChipCell>
+      ) : null}
+      {visible.has("development_stage") ? (
+        <ChipCell width={col("development_stage").width!}>
+          <AttributeChips
+            values={hit.development_stage}
+            chipMaxWidth={TABLE_CHIP_MAX}
+            wrap={false}
+          />
+        </ChipCell>
+      ) : null}
+      {visible.has("cells") ? (
+        <TruncatedCell text={cellsTooltip} width={col("cells").width} align="right">
+          {cellsLabel}
+        </TruncatedCell>
+      ) : null}
+    </TableRow>
+  );
+}
+
+export function ResultsPanel({
+  view,
+  rows,
+  query,
+  facets,
+  onOpenHits,
+  onApplyFacet,
+}: Props) {
   const [groupBy, setGroupBy] = useState<GroupByField>(() => loadStoredGroupBy());
+  const [columns, setColumns] = useState<TableColumnId[]>(() => loadStoredColumns());
   const [activeChip, setActiveChip] = useState<string | null>(null);
+  const [columnsMenuAnchor, setColumnsMenuAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -77,9 +314,23 @@ export function ResultsPanel({ view, onOpenHits }: Props) {
     setActiveChip(null);
   }, [groupBy]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMNS_STORAGE_KEY, JSON.stringify(columns));
+    } catch {
+      // ignore
+    }
+  }, [columns]);
+
+  const visibleColumns = useMemo(
+    () => TABLE_COLUMNS.filter((col) => columns.includes(col.id)),
+    [columns]
+  );
+  const visibleIds = useMemo(() => new Set(columns), [columns]);
+
   const groups = useMemo(
-    () => (view === "table" ? groupHits(items, groupBy) : []),
-    [view, items, groupBy]
+    () => (view === "table" ? groupHits(rows, groupBy) : []),
+    [view, rows, groupBy]
   );
 
   const topGroups = useMemo(() => {
@@ -95,158 +346,193 @@ export function ResultsPanel({ view, onOpenHits }: Props) {
 
   const focusGroup = (key: string, label: string) => {
     setActiveChip(key);
-
     if (groupBy === "none" || label === NONE_LABEL) return;
+    onApplyFacet(groupBy, label);
+    const el = document.getElementById(groupDomId(key));
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
-    // Filter only — do not scroll/jump the hits list.
-    setIndexUiState((previous) => ({
-      ...previous,
-      page: 1,
-      refinementList: {
-        ...(previous.refinementList ?? {}),
-        [groupBy]: [label],
-      },
-    }));
+  const toggleColumn = (id: TableColumnId) => {
+    if (id === "title") return;
+    setColumns((prev) =>
+      prev.includes(id) ? prev.filter((col) => col !== id) : [...prev, id]
+    );
+  };
+
+  const openColumnsMenu = (event: MouseEvent<HTMLElement>) => {
+    setColumnsMenuAnchor(event.currentTarget);
+  };
+
+  const closeColumnsMenu = () => {
+    setColumnsMenuAnchor(null);
   };
 
   if (view === "pivot") {
-    return <PivotHeatmap onOpenHits={onOpenHits} />;
-  }
-
-  if (!items.length) {
-    return <p className="empty-results">No experiments match these filters.</p>;
-  }
-
-  if (view === "table") {
-    const grouped = groupBy !== "none";
-
     return (
-      <div className="results-table-stack">
-        <div className="results-table-toolbar">
-          <label className="group-by-control" htmlFor="group-by-select">
-            <span className="group-by-label">Group by</span>
-            <select
-              id="group-by-select"
-              value={groupBy}
-              onChange={(event) => setGroupBy(event.target.value as GroupByField)}
-            >
-              {GROUP_BY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="group-by-hint">
-            {grouped
-              ? "Top groups by count on this page — click a chip to filter InstantSearch."
-              : "Choose an attribute to nest rows under section headers."}
-          </p>
+      <PivotHeatmap
+        query={query}
+        facets={facets}
+        onOpenHits={onOpenHits}
+        onApplyCell={(rowField, rowValue, colField, colValue) => {
+          onApplyFacet(rowField, rowValue);
+          onApplyFacet(colField, colValue);
+          onOpenHits();
+        }}
+      />
+    );
+  }
 
-          {grouped && topGroups.length > 0 ? (
-            <div className="group-chips" role="list" aria-label="Top groups by dataset count">
-              {topGroups.map((group) => {
-                const selected = activeChip === group.key;
-                return (
-                  <button
-                    key={group.key}
-                    type="button"
-                    role="listitem"
-                    className={selected ? "group-chip is-active" : "group-chip"}
-                    title={`${group.label} — ${group.hits.length} on this page; click to filter`}
-                    onClick={() => focusGroup(group.key, group.label)}
-                  >
-                    <span className="group-chip-label">{group.label}</span>
-                    <span className="group-chip-count">{group.hits.length}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="results-table-wrap">
-          <table className="results-table">
-            <thead>
-              <tr>
-                <th scope="col">Title</th>
-                <th scope="col">Source</th>
-                <th scope="col">Organism</th>
-                <th scope="col">Top organ</th>
-                <th scope="col">Assay</th>
-                <th scope="col">Disease</th>
-                <th scope="col">Cell type</th>
-                <th scope="col">Dev. stage</th>
-                <th scope="col" className="num">
-                  Cells
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => (
-                <GroupSection
-                  key={group.key}
-                  id={groupDomId(group.key)}
-                  label={group.label}
-                  count={group.hits.length}
-                  showHeader={grouped}
-                  highlighted={activeChip === group.key}
-                  hits={group.hits}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  if (view === "cards") {
+    return (
+      <Stack
+        direction="row"
+        flexWrap="wrap"
+        useFlexGap
+        gap={1.25}
+        sx={{
+          "& > *": {
+            flex: {
+              xs: "1 1 100%",
+              sm: "1 1 calc(50% - 10px)",
+              lg: "1 1 calc(33.333% - 12px)",
+            },
+            maxWidth: {
+              sm: "calc(50% - 10px)",
+              lg: "calc(33.333% - 12px)",
+            },
+          },
+        }}
+      >
+        {rows.map((hit) => (
+          <Hit key={hit.objectID} hit={hit} />
+        ))}
+      </Stack>
     );
   }
 
   return (
-    <div className="results-card-grid" role="list">
-      {items.map((hit) => (
-        <div key={hit.objectID} role="listitem">
-          <Hit hit={hit} />
-        </div>
-      ))}
-    </div>
-  );
-}
+    <Stack spacing={2}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ sm: "center" }}
+        flexWrap="wrap"
+        useFlexGap
+      >
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel id="group-by-label">Group by</InputLabel>
+          <Select
+            labelId="group-by-label"
+            label="Group by"
+            value={groupBy}
+            onChange={(event) => setGroupBy(event.target.value as GroupByField)}
+          >
+            {GROUP_BY_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-function GroupSection({
-  id,
-  label,
-  count,
-  showHeader,
-  highlighted,
-  hits,
-}: {
-  id: string;
-  label: string;
-  count: number;
-  showHeader: boolean;
-  highlighted: boolean;
-  hits: ExperimentHit[];
-}) {
-  return (
-    <>
-      {showHeader ? (
-        <tr
-          id={id}
-          className={
-            highlighted ? "group-header-row is-highlighted" : "group-header-row"
-          }
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<ViewColumnIcon />}
+          aria-haspopup="menu"
+          aria-expanded={Boolean(columnsMenuAnchor)}
+          aria-controls={columnsMenuAnchor ? "table-columns-menu" : undefined}
+          onClick={openColumnsMenu}
         >
-          <th scope="colgroup" colSpan={9}>
-            <span className="group-header-label">{label}</span>
-            <span className="group-header-count">
-              {count} {count === 1 ? "experiment" : "experiments"}
-            </span>
-          </th>
-        </tr>
-      ) : null}
-      {hits.map((hit) => (
-        <HitRow key={`${label}-${hit.objectID}`} hit={hit} />
+          Columns
+        </Button>
+        <Menu
+          id="table-columns-menu"
+          anchorEl={columnsMenuAnchor}
+          open={Boolean(columnsMenuAnchor)}
+          onClose={closeColumnsMenu}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}
+        >
+          {TABLE_COLUMNS.map((col) => {
+            const checked = columns.includes(col.id);
+            return (
+              <MenuItem
+                key={col.id}
+                dense
+                disabled={col.required}
+                onClick={() => toggleColumn(col.id)}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <Checkbox
+                    edge="start"
+                    size="small"
+                    tabIndex={-1}
+                    disableRipple
+                    checked={checked}
+                    disabled={col.required}
+                  />
+                </ListItemIcon>
+                <ListItemText primary={col.label} />
+              </MenuItem>
+            );
+          })}
+        </Menu>
+
+        {topGroups.length ? (
+          <Stack direction="row" flexWrap="wrap" useFlexGap gap={1}>
+            {topGroups.map((group) => (
+              <EllipsisChip
+                key={group.key}
+                clickable
+                color={activeChip === group.key ? "primary" : "default"}
+                label={`${group.label} (${group.hits.length})`}
+                maxWidth={200}
+                onClick={() => focusGroup(group.key, group.label)}
+              />
+            ))}
+          </Stack>
+        ) : null}
+      </Stack>
+
+      {groups.map((group) => (
+        <Stack key={group.key} id={groupDomId(group.key)} spacing={1}>
+          {groupBy !== "none" ? (
+            <Typography variant="subtitle1" fontWeight={700}>
+              {group.label}{" "}
+              <Typography component="span" color="text.secondary">
+                ({group.hits.length})
+              </Typography>
+            </Typography>
+          ) : null}
+          <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2 }}>
+            <Table size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
+              <TableHead>
+                <TableRow>
+                  {visibleColumns.map((col) => (
+                    <TableCell
+                      key={col.id}
+                      align={col.id === "cells" ? "right" : "left"}
+                      sx={columnCellSx(col)}
+                    >
+                      {col.label}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {group.hits.map((hit) => (
+                  <HitRow
+                    key={`${group.key}-${hit.objectID}`}
+                    hit={hit}
+                    visible={visibleIds}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Stack>
       ))}
-    </>
+    </Stack>
   );
 }

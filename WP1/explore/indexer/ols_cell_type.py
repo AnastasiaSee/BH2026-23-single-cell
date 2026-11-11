@@ -2,7 +2,7 @@
 """OLS (EBI) cell-type hierarchy helpers with on-disk cache.
 
 Resolves Cell Ontology (CL) curies (and best-effort label lookups) to
-hierarchical label paths used as InstantSearch `cell_type_hierarchy.lvlN`.
+hierarchical label paths used as `cell_type_hierarchy.lvlN` / `cell_type_hierarchy_lvlN`.
 """
 
 from __future__ import annotations

@@ -9,9 +9,9 @@ Examples:
     # Force re-fetch from OLS (ignore cached paths)
     python enrich_cell_type_hierarchy.py --refresh
 
-Then re-index:
+Then re-export Parquet:
 
-    python index_experiments.py --recreate
+    python export_parquet.py
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     warm_cache_for_curies(curies, refresh=args.refresh, sleep_s=args.sleep)
     print(f"Done. Cache at {CACHE_FILE}")
-    print("Re-index with: python index_experiments.py --recreate")
+    print("Re-export with: python export_parquet.py")
     return 0
 
 
