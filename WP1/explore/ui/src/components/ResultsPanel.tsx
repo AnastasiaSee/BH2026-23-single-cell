@@ -388,11 +388,18 @@ export function ResultsPanel({
         direction="row"
         flexWrap="wrap"
         useFlexGap
-        gap={2}
+        gap={1.25}
         sx={{
           "& > *": {
-            flex: { xs: "1 1 100%", md: "1 1 calc(50% - 8px)" },
-            maxWidth: { md: "calc(50% - 8px)" },
+            flex: {
+              xs: "1 1 100%",
+              sm: "1 1 calc(50% - 10px)",
+              lg: "1 1 calc(33.333% - 12px)",
+            },
+            maxWidth: {
+              sm: "calc(50% - 10px)",
+              lg: "calc(33.333% - 12px)",
+            },
           },
         }}
       >

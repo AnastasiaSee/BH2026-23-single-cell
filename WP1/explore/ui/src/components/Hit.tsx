@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  Box,
   Card,
   CardContent,
   Chip,
@@ -60,7 +59,7 @@ export function formatCompactCount(value: number): string {
 export function AttributeChips({
   values,
   limit = 3,
-  chipMaxWidth = 140,
+  chipMaxWidth = 110,
   wrap = true,
 }: {
   values?: string[];
@@ -70,7 +69,7 @@ export function AttributeChips({
 }) {
   if (!values?.length) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="caption" color="text.secondary">
         —
       </Typography>
     );
@@ -101,12 +100,12 @@ export function AttributeChips({
 
 function FacetBlock({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" fontWeight={600}>
+    <Stack spacing={0.25} minWidth={0}>
+      <Typography variant="caption" color="text.secondary" fontWeight={600} lineHeight={1.2}>
         {label}
       </Typography>
-      <Box mt={0.5}>{children}</Box>
-    </Box>
+      {children}
+    </Stack>
   );
 }
 
@@ -114,8 +113,20 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
   const title = hitTitle(hit);
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
-      <CardContent>
-        <Typography variant="h6" component="h3" gutterBottom>
+      <CardContent sx={{ p: 1.25, "&:last-child": { pb: 1.25 } }}>
+        <Typography
+          variant="subtitle1"
+          component="h3"
+          fontWeight={700}
+          lineHeight={1.25}
+          sx={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            mb: 0.75,
+          }}
+        >
           {hit.explorer_url ? (
             <Link href={hit.explorer_url} target="_blank" rel="noreferrer" underline="hover">
               {title}
@@ -124,7 +135,7 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
             title
           )}
         </Typography>
-        <Stack direction="row" flexWrap="wrap" useFlexGap gap={1} mb={2}>
+        <Stack direction="row" flexWrap="wrap" useFlexGap gap={0.5} mb={1}>
           {hit.source ? (
             <Chip size="small" color="primary" label={formatSource(hit.source)} />
           ) : null}
@@ -141,15 +152,21 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
               size="small"
               variant="outlined"
               label={hit.study_journal}
-              maxWidth={180}
+              maxWidth={140}
             />
           ) : null}
         </Stack>
-        <Box
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          useFlexGap
+          gap={1}
           sx={{
-            display: "grid",
-            gap: 1.25,
-            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            "& > *": {
+              flex: "1 1 calc(50% - 8px)",
+              minWidth: 0,
+              maxWidth: "100%",
+            },
           }}
         >
           <FacetBlock label="Organism">
@@ -173,7 +190,7 @@ export function Hit({ hit }: { hit: ExperimentHit }) {
           <FacetBlock label="Dev. stage">
             <AttributeChips values={hit.development_stage} />
           </FacetBlock>
-        </Box>
+        </Stack>
       </CardContent>
     </Card>
   );
