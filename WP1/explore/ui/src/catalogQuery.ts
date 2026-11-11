@@ -8,8 +8,8 @@
 import { parquetReadObjects } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 
-/** Cache-bust so GitHub Pages / CDN cannot keep a stale HTML 404 as parquet. */
-export const PARQUET_URL = `${import.meta.env.BASE_URL}experiments.parquet?v=2`;
+/** Cache-bust so GitHub Pages / browsers cannot keep a stale HTML 404 as parquet. */
+export const PARQUET_URL = `${import.meta.env.BASE_URL}experiments.parquet?v=3`;
 
 export type FacetSelection = Record<string, string[]>;
 
@@ -142,7 +142,8 @@ async function loadCatalog(): Promise<ExperimentRow[]> {
     catalogPromise = (async () => {
       // Full-file fetch (not range/URL mode): GitHub Pages gzips .parquet and
       // applies byte ranges to the gzip stream, which breaks hyparquet footers.
-      const response = await fetch(PARQUET_URL, { cache: "no-cache" });
+      // no-store avoids 304 reuse of a previously cached HTML/error body.
+      const response = await fetch(PARQUET_URL, { cache: "no-store" });
       if (!response.ok) {
         throw new Error(
           `Failed to fetch ${PARQUET_URL} (${response.status}). Run: python indexer/export_parquet.py`
