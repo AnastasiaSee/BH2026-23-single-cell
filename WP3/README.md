@@ -22,15 +22,6 @@ Interpretation
 # Local outlier factor
 The other method we test is a novelty detection method (local outlier factor) which takes a manifold and asks how much a datapoint (e.g., a cell) differs from its closest neighbor. We provide PCA (integrated dataset) from SAMap and it outputs outlier scores which we will aggregate by cell-type annotation and integrate with other sources of information like marker gene expression and lack of SAMap-based homology support. We then characterize candidate species-specific clusters.
 
-# Repository layout
-
-|__ config
-|     |__ WP3_minimal_env.yml       
-|__ notebooks
-|     |__ WP3_notebook_1.ipynb
-|__ scripts
-|__ README.md
-
 # Running the workflow
 
 To be updated after scripts finished.

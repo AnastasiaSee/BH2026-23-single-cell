@@ -81,12 +81,14 @@ MANUAL_FIELDS = ("factor", "source_term_id", "action", "target_term_id", "commen
 
 
 def parse_obo(path):
-    """Return {id: {id, name, parents [(rel, id)], xrefs, obsolete, replaced_by}} for [Term]s."""
+    """Return {id: {id, name, parents [(rel, id)], xrefs, obsolete, replaced_by, subsets}} for
+    [Term]s."""
     terms, cur = {}, None
     for line in path.open(encoding="utf-8"):
         line = line.rstrip("\n")
         if line == "[Term]":
-            cur = {"parents": [], "xrefs": [], "obsolete": False, "name": "", "replaced_by": []}
+            cur = {"parents": [], "xrefs": [], "obsolete": False, "name": "", "replaced_by": [],
+                   "subsets": []}
         elif line.startswith("["):
             cur = None
         elif cur is None:
@@ -100,6 +102,8 @@ def parse_obo(path):
             cur["obsolete"] = True
         elif line.startswith("replaced_by: "):
             cur["replaced_by"].append(line[13:].split()[0])
+        elif line.startswith("subset: "):
+            cur["subsets"].append(line[8:].split()[0])
         elif line.startswith("xref: "):
             cur["xrefs"].append(line[6:].split()[0])
         elif "gci_relation" in line:

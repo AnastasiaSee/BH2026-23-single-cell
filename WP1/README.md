@@ -1,6 +1,15 @@
 # WP1: Biodata resource integration
 
-Pipeline to build the dataset metadata used for the species x factor table. All commands are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored); generated files to share, such as the term remapping TSV, go in `output/`.
+Pipeline to build the dataset metadata used for the species x factor table, online at **https://fbastian.github.io/BH2026-23-single-cell/**. The commands of each step are run from this folder (`WP1/`), in the conda environment described in [SETUP.md](SETUP.md). Input and intermediate files live in `data/` (git-ignored); generated files to share, such as the term remapping TSV, go in `output/`, and the files loaded by the explore page in `explore/ui/public/`.
+
+To run steps 1 to 6 in one go, in the conda environment (the script can be started from any folder, here the repository root):
+
+```
+bash WP1/scripts/run_pipeline.sh                  # downloads the ontologies again
+bash WP1/scripts/run_pipeline.sh --skip-download  # uses the ontologies already in data/
+```
+
+[scripts/run_pipeline.sh](scripts/run_pipeline.sh) runs the commands below and stops at the first error. The dataset exports (`data/datasets_CxG.json`, `data/datasets_scFAIR.json`, `data/datasets_fenix.json`) must already be in `data/`. Set `PYTHON` to use another interpreter (e.g. `PYTHON=/path/to/envs/bh23/bin/python`). A new ontology release can change the remappings: check the warnings and the `unresolved` rows of step 3.
 
 ## 1. Download the ontologies
 
@@ -97,3 +106,55 @@ All options are mandatory. Use the same datasets file as in step 3. The TSV has 
 | `ancestor_ids` | all ancestors within the domain (`;`-separated), the term excluded: a dataset annotated with the term counts for all of them in the roll-up |
 
 The script warns about annotated terms that are not in composite (e.g. a remapping TSV generated from other datasets) or outside their factor's domain.
+
+## 5. Tag the uninformative terms
+
+[scripts/make_term_subsets.py](scripts/make_term_subsets.py) lists the terms of the ancestor TSV (step 4) that are in given subsets of composite (`subset:` lines of the OBO file). The explore page hides them in the filter trees and in the roll-up columns of the pivot, and shows their more specific terms instead.
+
+```
+python scripts/make_term_subsets.py \
+  --composite data/composite-metazoan.obo \
+  --ancestors output/term_ancestors.tsv \
+  --subsets non_informative upper_level ubprop:upper_level common_anatomy \
+  --manual term_subsets_manual.tsv \
+  --out output/term_subsets.tsv
+```
+
+`--composite`, `--ancestors`, `--subsets` and `--out` are mandatory. The subsets:
+
+- `non_informative` ("abstract class brought in to group ontology classes but not informative", e.g. regional part of brain);
+- `upper_level` ("abstract upper-level terms not directly useful for analysis", e.g. material anatomical entity, organ);
+- `ubprop:upper_level`, the same tag on CL terms (cell, germ line cell, stuff accumulating cell);
+- `common_anatomy` ("terms applicable across life, not restricted to Metazoa"), mostly the same terms as `upper_level`, plus generic ones such as anatomical conduit, disconnected anatomical group, anatomical collection.
+
+Hand-curated terms to hide go in [term_subsets_manual.tsv](term_subsets_manual.tsv) (columns `factor`, `term_id`, `comment`), given with `--manual`; they get the subset `manual`. A term that is not in the ancestor TSV is reported and ignored. The file is empty for now.
+
+The output TSV has the columns `factor`, `term_id`, `term_label`, `annotated` (as in step 4) and `subsets`. Terms annotated to datasets can be in these subsets too (e.g. cortex, hippocampal field, multicellular anatomical structure, and the roots, which stand for missing annotations): they stay visible as raw terms in the pivot.
+
+## 6. Export the data for the explore page
+
+[scripts/export_explore.py](scripts/export_explore.py) writes the two Parquet files loaded by the explore page ([explore/](explore/)): the datasets with their remapped annotations, and the terms with their hierarchy.
+
+```
+python scripts/export_explore.py \
+  --datasets output/datasets_merged.json \
+  --remappings output/term_remappings.tsv \
+  --ancestors output/term_ancestors.tsv \
+  --subsets output/term_subsets.tsv \
+  --out-datasets explore/ui/public/datasets.parquet \
+  --out-terms explore/ui/public/terms.parquet
+```
+
+All options are mandatory. Use the files of steps 2 to 5. What the export does:
+
+- Tissue, cell type and developmental stage are remapped with the TSV of step 3, like in step 4: an empty annotation becomes the root of the factor, an excluded term (cell line) is dropped.
+- Subspecies are folded into their species: a label of three words or more becomes its first two words, with the id of that species in the datasets (e.g. *Mus musculus musculus* becomes *Mus musculus*, *Sus scrofa domesticus* becomes *Sus scrofa*).
+- For assay, disease, sex and suspension type, `unknown`, `na` and an empty annotation are all "NA (not annotated)".
+- The resources of a dataset are listed with a link to the dataset in each (several for datasets merged across resources), and datasets are flagged when merged across resources or annotated with several species.
+- Datasets without a title (Single Cell Portal, ASAP, Bgee) get the collection name, or else the DOI label or the resource name, followed by the resource id.
+
+The terms file has one row per value of each field (`field`, `id`, `label`, `parent_ids`, `ancestor_ids`, `subsets`); for tissue, cell type and stage, the hierarchy comes from the TSV of step 4 and the subsets from the TSV of step 5. The page computes the counts and the roll-up in the browser.
+
+## 7. Explore page
+
+Static page (React, no server) with filters on the side and a pivot table (heatmap) of the number of datasets, e.g. species x tissue. Online at https://fbastian.github.io/BH2026-23-single-cell/, deployed on GitHub Pages from the `main` branch. See [explore/README.md](explore/README.md) to run it locally and for the deployment.
